@@ -65,6 +65,7 @@ document
 optional arguments:
   -h, --help            show this help message and exit
   -V, --version         show program's version number and exit
+  -v, --verbose         print additional info during execution
 
 files:
   -o OUTFILE, --outfile OUTFILE
