@@ -26,8 +26,8 @@ import sys
 import mkdocs_combine
 from mkdocs_combine.exceptions import FatalError
 
-__version__ = '0.3.0.0'
-
+from pkg_resources import get_distribution
+__version__ = get_distribution('mkdocs-combine').version
 
 def stdout_file(encoding):
     # Python 2 and Python 3 have mutually incompatible approaches to writing
