@@ -4,8 +4,6 @@ from os import path
 
 from setuptools import find_packages, setup
 
-here = path.abspath(path.dirname(__file__))
-
 long_description = (
     "mkdocs_combine is a library that combines a MkDocs-style Markdown site "
     "(multiple files, with the document structure defined in the MkDocs "
@@ -18,6 +16,7 @@ long_description = (
 setup(
     name='mkdocs-combine',
 
+    # Versions should comply with PEP440.
     version='0.3.1.0',
 
     description='Combines a MkDocs Markdown site into a single Markdown file',
