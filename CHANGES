@@ -1,6 +1,7 @@
 0.3.1.0 by Daniel Nüst:
 
  * Added admonition processing
+ * Add verbose option and some logging
 
 0.3.0.0 by Adam Twardoch:
 
