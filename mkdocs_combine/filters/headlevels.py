@@ -28,7 +28,7 @@ class HeadlevelFilter(object):
             if page['level'] > max_offset:
                 max_offset = page['level']
 
-        self.offset = max_offset
+        self.offset = max_offset-1
 
 
     def run(self, lines):

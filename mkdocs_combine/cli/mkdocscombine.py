@@ -60,6 +60,8 @@ def parse_args():
                             help="exclude Markdown files from processing (default: none)")
     args_files.add_argument('-H', '--outhtml', dest='outhtml', default=None,
                             help="write simple HTML to path ('-' for stdout)")
+    args_files.add_argument('-s', '--strip-heading', dest='strip_heading', default=None,
+                            help="strip a section with the specified heading out of the document")
 
     args_struct = args.add_argument_group('structure')
     args_strip_metadata = args_struct.add_mutually_exclusive_group(required=False)
@@ -147,6 +149,7 @@ def main():
             convert_math=args.convert_math,
             add_chapter_heads=args.add_chapter_heads,
             increase_heads=args.increase_heads,
+            strip_heading=args.strip_heading,
             add_page_break=args.add_page_break,
         )
     except FatalError as e:

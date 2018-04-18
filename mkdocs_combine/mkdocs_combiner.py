@@ -31,6 +31,8 @@ import mkdocs_combine.filters.metadata
 import mkdocs_combine.filters.tables
 import mkdocs_combine.filters.toc
 import mkdocs_combine.filters.xref
+import mkdocs_combine.filters.heading
+
 from mkdocs_combine.exceptions import FatalError
 
 
@@ -46,6 +48,7 @@ class MkDocsCombiner:
         self.image_ext = kwargs.get('image_ext', None)
         self.strip_anchors = kwargs.get('strip_anchors', True)
         self.strip_metadata = kwargs.get('strip_metadata', True)
+        self.strip_heading = kwargs.get('strip_heading', None)
         self.convert_math = kwargs.get('convert_math', True)
         self.width = kwargs.get('width', 100)
         self.add_chapter_heads = kwargs.get('add_chapter_heads', True)
@@ -202,6 +205,10 @@ class MkDocsCombiner:
             if self.add_page_break:
                 lines.append('\\newpage')
                 lines.append('')
+
+        if self.strip_heading is not None:
+            print("Stripping heading")
+            lines = mkdocs_combine.filters.heading.HeadingFilter(self.strip_heading).run(lines)
 
         # Strip anchor tags
         if self.strip_anchors:
