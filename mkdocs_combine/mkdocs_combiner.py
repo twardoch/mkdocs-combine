@@ -158,8 +158,9 @@ class MkDocsCombiner:
         for page in pages:
 
             # exclude file if it is listed in the excludes
-            if page[u'file'] in self.exclude:
-                continue
+            if self.exclude is not None:
+                if page[u'file'] in self.exclude:
+                    continue
 
             lines_tmp = []
             if page[u'file']:
