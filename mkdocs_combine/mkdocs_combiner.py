@@ -156,6 +156,11 @@ class MkDocsCombiner:
         f_headlevel = mkdocs_combine.filters.headlevels.HeadlevelFilter(pages)
 
         for page in pages:
+
+            # exclude file if it is listed in the excludes
+            if page[u'file'] in self.exclude:
+                continue
+
             lines_tmp = []
             if page[u'file']:
                 fname = os.path.join(self.config[u'docs_dir'], page[u'file'])
