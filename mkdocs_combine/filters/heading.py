@@ -56,7 +56,5 @@ class HeadingFilter(object):
             
             if (not removing_heading) or skip_line:
                 ret.append(line)
-            else:
-                print("removing line:", line)
 
         return ret

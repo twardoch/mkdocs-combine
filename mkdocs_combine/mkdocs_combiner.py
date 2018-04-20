@@ -15,6 +15,7 @@
 #
 import codecs
 import os
+import collections
 
 import markdown
 import mkdocs.config
@@ -54,6 +55,9 @@ class MkDocsCombiner:
         self.add_chapter_heads = kwargs.get('add_chapter_heads', True)
         self.add_page_break = kwargs.get('add_page_break', False)
         self.increase_heads = kwargs.get('increase_heads', True)
+        self.numbered_headings = kwargs.get('numbered_headings', False)
+        self.text_refs = kwargs.get('text_refs', False)
+        print("text refs", self.text_refs)
         self.combined_md_lines = []
         self.html_bare = u''
         self.html = u''
@@ -104,14 +108,14 @@ class MkDocsCombiner:
                 flattened.append(
                     {
                         u'file' : page,
-                        u'title': u'%s {: .page-title}' % mkdocs.utils.filename_to_title(page),
+                        u'title': mkdocs.utils.filename_to_title(page),
                         u'level': level,
                     })
             if type(page) is list:
                 flattened.append(
                     {
                         u'file' : page[0],
-                        u'title': u'%s {: .page-title}' % page[1],
+                        u'title': page[1],
                         u'level': level,
                     })
             if type(page) is dict:
@@ -119,7 +123,7 @@ class MkDocsCombiner:
                     flattened.append(
                         {
                             u'file' : list(page.values())[0],
-                            u'title': u'%s {: .page-title}' % list(page.keys())[0],
+                            u'title': list(page.keys())[0],
                             u'level': level,
                         })
                 if type(list(page.values())[0]) is list:
@@ -127,7 +131,7 @@ class MkDocsCombiner:
                     flattened.append(
                         {
                             u'file' : None,
-                            u'title': u'%s {: .page-title}' % list(page.keys())[0],
+                            u'title': list(page.keys())[0],
                             u'level': level,
                         })
                     # Add children sections
@@ -138,6 +142,21 @@ class MkDocsCombiner:
                     )
 
         return flattened
+
+
+    def read_lines(self, page):
+        lines_tmp = []
+        if page[u'file']:
+            fname = os.path.join(self.config[u'docs_dir'], page[u'file'])
+            try:
+                with codecs.open(fname, 'r', self.encoding) as p:
+                    for line in p.readlines():
+                        lines_tmp.append(line.rstrip())
+            except IOError as e:
+                raise FatalError("Couldn't open %s for reading: %s" % (fname,
+                                                                        e.strerror), 1)
+        return lines_tmp
+
 
     def combine(self):
         """User-facing conversion method. Returns combined document as a list of
@@ -158,24 +177,43 @@ class MkDocsCombiner:
 
         f_headlevel = mkdocs_combine.filters.headlevels.HeadlevelFilter(pages)
 
-        for page in pages:
+        # build the page index used for cross referencing
+        page_index = {}
+        title_count_index = {}
+        unique_title_index = {}
+        heading_index = collections.OrderedDict()
 
+        for page in pages:
+            page_index[page[u'file']] = page
+
+            lines_tmp = self.read_lines(page)
+
+            if self.increase_heads:
+                lines_tmp = f_headlevel.run(lines_tmp)
+
+            # strip an entire section (defined by its heading) out of the document
+            if self.strip_heading is not None:
+                lines_tmp = mkdocs_combine.filters.heading.HeadingFilter(self.strip_heading).run(lines_tmp)
+
+            f_heading_indexer = mkdocs_combine.filters.xref.HeadingIndexer(
+                page, 
+                heading_index,
+                title_count_index,
+                unique_title_index,
+                self.numbered_headings)
+            
+            f_heading_indexer.run(lines_tmp)
+
+            
+
+        for page in pages:
             # exclude file if it is listed in the excludes
             if self.exclude is not None:
                 if page[u'file'] in self.exclude:
                     continue
 
-            lines_tmp = []
-            if page[u'file']:
-                fname = os.path.join(self.config[u'docs_dir'], page[u'file'])
-                try:
-                    with codecs.open(fname, 'r', self.encoding) as p:
-                        for line in p.readlines():
-                            lines_tmp.append(line.rstrip())
-                except IOError as e:
-                    raise FatalError("Couldn't open %s for reading: %s" % (fname,
-                                                                           e.strerror), 1)
-
+            lines_tmp = self.read_lines(page)
+            
             f_chapterhead = mkdocs_combine.filters.chapterhead.ChapterheadFilter(
                 headlevel=page[u'level'],
                 title=page[u'title']
@@ -185,6 +223,14 @@ class MkDocsCombiner:
                 filename=page[u'file'],
                 image_path=self.config[u'site_dir'],
                 image_ext=self.image_ext)
+
+            f_xref = mkdocs_combine.filters.xref.XrefFilter(
+                page, 
+                page_index, 
+                heading_index, 
+                unique_title_index,
+                self.text_refs,
+                self.numbered_headings)
 
             if self.exclude:
                 lines_tmp = f_exclude.run(lines_tmp)
@@ -198,6 +244,15 @@ class MkDocsCombiner:
             if self.add_chapter_heads:
                 lines_tmp = f_chapterhead.run(lines_tmp)
             lines_tmp = f_image.run(lines_tmp)
+
+            # strip an entire section (defined by its heading) out of the document
+            if self.strip_heading is not None:
+                lines_tmp = mkdocs_combine.filters.heading.HeadingFilter(self.strip_heading).run(lines_tmp)
+
+            # Fix cross references
+            if self.filter_xrefs:
+                lines_tmp = f_xref.run(lines_tmp)
+
             lines.extend(lines_tmp)
             # Add an empty line between pages to prevent text from a previous
             # file from butting up against headers in a subsequent file.
@@ -206,10 +261,6 @@ class MkDocsCombiner:
                 lines.append('\\newpage')
                 lines.append('')
 
-        if self.strip_heading is not None:
-            print("Stripping heading")
-            lines = mkdocs_combine.filters.heading.HeadingFilter(self.strip_heading).run(lines)
-
         # Strip anchor tags
         if self.strip_anchors:
             lines = mkdocs_combine.filters.anchors.AnchorFilter().run(lines)
@@ -217,10 +268,6 @@ class MkDocsCombiner:
         # Convert math expressions
         if self.convert_math:
             lines = mkdocs_combine.filters.math.MathFilter().run(lines)
-
-        # Fix cross references
-        if self.filter_xrefs:
-            lines = mkdocs_combine.filters.xref.XrefFilter().run(lines)
 
         if self.filter_toc:
             lines = mkdocs_combine.filters.toc.TocFilter().run(lines)
