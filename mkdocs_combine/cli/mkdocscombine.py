@@ -26,7 +26,7 @@ import sys
 import mkdocs_combine
 from mkdocs_combine.exceptions import FatalError
 
-__version__ = '0.3.0.0'
+__version__ = '0.3.1.1'
 
 
 def stdout_file(encoding):
@@ -139,6 +139,8 @@ def parse_args():
 
     args_extras.add_argument('-i', '--image-ext', dest='image_ext', default=None,
                              help="replace image extensions by (default: no replacement)")
+    args_extras.add_argument('-d', '--admonitions-md', dest='convert_admonition_md', action='store_true',
+                             help='convert admonitions to HTML already in the Markdown')
 
     return args.parse_args()
 
@@ -163,6 +165,7 @@ def main():
             strip_heading=args.strip_heading,
             add_page_break=args.add_page_break,
             numbered_headings=args.numbered_headings,
+            convert_admonition_md=args.convert_admonition_md
             text_refs=args.text_refs
         )
     except FatalError as e:

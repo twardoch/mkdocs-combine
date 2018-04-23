@@ -33,6 +33,7 @@ import mkdocs_combine.filters.tables
 import mkdocs_combine.filters.toc
 import mkdocs_combine.filters.xref
 import mkdocs_combine.filters.heading
+import mkdocs_combine.filters.admonitions
 
 from mkdocs_combine.exceptions import FatalError
 
@@ -56,6 +57,7 @@ class MkDocsCombiner:
         self.add_page_break = kwargs.get('add_page_break', False)
         self.increase_heads = kwargs.get('increase_heads', True)
         self.numbered_headings = kwargs.get('numbered_headings', False)
+        self.convert_admonition_md = kwargs.get('convert_admonition_md', False)
         self.text_refs = kwargs.get('text_refs', False)
         print("text refs", self.text_refs)
         self.combined_md_lines = []
@@ -104,7 +106,7 @@ class MkDocsCombiner:
         flattened = []
 
         for page in pages:
-            if type(page) in (str, self.encoding):
+            if type(page) in (str, self.encoding, unicode):
                 flattened.append(
                     {
                         u'file' : page,
@@ -140,7 +142,6 @@ class MkDocsCombiner:
                             list(page.values())[0],
                             level + 1)
                     )
-
         return flattened
 
 
@@ -269,6 +270,9 @@ class MkDocsCombiner:
         if self.convert_math:
             lines = mkdocs_combine.filters.math.MathFilter().run(lines)
 
+        # Convert admonitions already for Markdown output
+        if self.convert_admonition_md:
+            lines = mkdocs_combine.filters.admonitions.AdmonitionFilter().run(lines)
         if self.filter_toc:
             lines = mkdocs_combine.filters.toc.TocFilter().run(lines)
 

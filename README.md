@@ -106,6 +106,7 @@ extras:
   -l, --latex           combine the \( \) Markdown math into LaTeX $$ inlines
   -i IMAGE_EXT, --image-ext IMAGE_EXT
                         replace image extensions by (default: no replacement)
+  -d, --admonitions-md  convert admonitions to HTML already in the Markdown
 ```
 
 ## Usage example

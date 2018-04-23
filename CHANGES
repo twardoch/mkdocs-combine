@@ -1,3 +1,15 @@
+0.3.1.1 by Adam Twardoch:
+
+ * Compatibility fix for unicode filenames
+
+0.3.1.0 by Daniel Nüst:
+
+* Added admonition processing
+
+0.3.0.1 by Jeff Hastings:
+
+ * Add ability to insert page breaks between pages
+
 0.3.0.0 by Adam Twardoch:
 
  * Renamed project to 'mkdocs-combine'
