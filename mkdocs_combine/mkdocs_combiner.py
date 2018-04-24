@@ -15,7 +15,7 @@
 #
 import codecs
 import os
-import collections
+import re
 
 import markdown
 import mkdocs.config
@@ -36,6 +36,8 @@ import mkdocs_combine.filters.heading
 import mkdocs_combine.filters.admonitions
 
 from mkdocs_combine.exceptions import FatalError
+
+from mkdocs_combine.page import Page
 
 
 class MkDocsCombiner:
@@ -59,7 +61,6 @@ class MkDocsCombiner:
         self.numbered_headings = kwargs.get('numbered_headings', False)
         self.convert_admonition_md = kwargs.get('convert_admonition_md', False)
         self.text_refs = kwargs.get('text_refs', False)
-        print("text refs", self.text_refs)
         self.combined_md_lines = []
         self.html_bare = u''
         self.html = u''
@@ -101,54 +102,39 @@ class MkDocsCombiner:
 
         cfg.close()
 
-    def flatten_pages(self, pages, level=1):
+    def flatten_pages(self, pages, parent=None):
         """Recursively flattens pages data structure into a one-dimensional data structure"""
         flattened = []
 
         for page in pages:
-            if type(page) in (str, self.encoding, unicode):
-                flattened.append(
-                    {
-                        u'file' : page,
-                        u'title': mkdocs.utils.filename_to_title(page),
-                        u'level': level,
-                    })
+            if type(page) in (str, self.encoding):
+                flattened.append(Page(mkdocs.utils.filename_to_title(page), parent, page))
+
             if type(page) is list:
-                flattened.append(
-                    {
-                        u'file' : page[0],
-                        u'title': page[1],
-                        u'level': level,
-                    })
+                flattened.append(page[1], parent, page[0])
+
             if type(page) is dict:
                 if type(list(page.values())[0]) in (str, self.encoding):
-                    flattened.append(
-                        {
-                            u'file' : list(page.values())[0],
-                            u'title': list(page.keys())[0],
-                            u'level': level,
-                        })
+                    flattened.append(Page(list(page.keys())[0], parent, list(page.values())[0]))
+
                 if type(list(page.values())[0]) is list:
-                    # Add the parent section
-                    flattened.append(
-                        {
-                            u'file' : None,
-                            u'title': list(page.keys())[0],
-                            u'level': level,
-                        })
+                    section_page = Page(list(page.keys())[0], parent, None, True)
+                    flattened.append(section_page)
+
                     # Add children sections
                     flattened.extend(
                         self.flatten_pages(
                             list(page.values())[0],
-                            level + 1)
+                            section_page)
                     )
+
         return flattened
 
 
     def read_lines(self, page):
         lines_tmp = []
-        if page[u'file']:
-            fname = os.path.join(self.config[u'docs_dir'], page[u'file'])
+        if page.get_file_path() is not None:
+            fname = os.path.join(self.config[u'docs_dir'], page.get_file_path())
             try:
                 with codecs.open(fname, 'r', self.encoding) as p:
                     for line in p.readlines():
@@ -156,6 +142,11 @@ class MkDocsCombiner:
             except IOError as e:
                 raise FatalError("Couldn't open %s for reading: %s" % (fname,
                                                                         e.strerror), 1)
+        else:
+            # this is a parent section
+            heading_line = '#' * page.get_level() + " " + page.get_title()
+            lines_tmp.append(heading_line)
+            
         return lines_tmp
 
 
@@ -173,23 +164,18 @@ class MkDocsCombiner:
             base_path=self.config[u'docs_dir'],
             encoding=self.encoding)
 
-        # First, do the processing that must be done on a per-file basis:
-        # Adjust header levels, insert chapter headings and adjust image paths.
-
-        f_headlevel = mkdocs_combine.filters.headlevels.HeadlevelFilter(pages)
-
         # build the page index used for cross referencing
         page_index = {}
-        title_count_index = {}
-        unique_title_index = {}
-        heading_index = collections.OrderedDict()
+        previous_heading = None
 
         for page in pages:
-            page_index[page[u'file']] = page
+            page_index[page.get_file_path()] = page
 
             lines_tmp = self.read_lines(page)
 
+            # Adjust header levels, insert chapter headings and adjust image paths.
             if self.increase_heads:
+                f_headlevel = mkdocs_combine.filters.headlevels.HeadlevelFilter(page)
                 lines_tmp = f_headlevel.run(lines_tmp)
 
             # strip an entire section (defined by its heading) out of the document
@@ -197,39 +183,36 @@ class MkDocsCombiner:
                 lines_tmp = mkdocs_combine.filters.heading.HeadingFilter(self.strip_heading).run(lines_tmp)
 
             f_heading_indexer = mkdocs_combine.filters.xref.HeadingIndexer(
-                page, 
-                heading_index,
-                title_count_index,
-                unique_title_index,
+                page,
+                previous_heading,
                 self.numbered_headings)
             
             f_heading_indexer.run(lines_tmp)
+            previous_heading = f_heading_indexer.get_current_heading()
 
             
 
         for page in pages:
             # exclude file if it is listed in the excludes
             if self.exclude is not None:
-                if page[u'file'] in self.exclude:
+                if page.get_file_path() in self.exclude:
                     continue
 
             lines_tmp = self.read_lines(page)
             
             f_chapterhead = mkdocs_combine.filters.chapterhead.ChapterheadFilter(
-                headlevel=page[u'level'],
-                title=page[u'title']
+                headlevel=page.get_level(),
+                title=page.get_title()
             )
 
             f_image = mkdocs_combine.filters.images.ImageFilter(
-                filename=page[u'file'],
+                filename=page.get_file_path(),
                 image_path=self.config[u'site_dir'],
                 image_ext=self.image_ext)
 
             f_xref = mkdocs_combine.filters.xref.XrefFilter(
                 page, 
-                page_index, 
-                heading_index, 
-                unique_title_index,
+                page_index,
                 self.text_refs,
                 self.numbered_headings)
 
@@ -240,7 +223,10 @@ class MkDocsCombiner:
                 lines_tmp = f_include.run(lines_tmp)
 
             lines_tmp = mkdocs_combine.filters.metadata.MetadataFilter().run(lines_tmp)
+
+            # Adjust header levels, insert chapter headings and adjust image paths.
             if self.increase_heads:
+                f_headlevel = mkdocs_combine.filters.headlevels.HeadlevelFilter(page)
                 lines_tmp = f_headlevel.run(lines_tmp)
             if self.add_chapter_heads:
                 lines_tmp = f_chapterhead.run(lines_tmp)
@@ -270,7 +256,7 @@ class MkDocsCombiner:
         if self.convert_math:
             lines = mkdocs_combine.filters.math.MathFilter().run(lines)
 
-        # Convert admonitions already for Markdown output
+            # Convert admonitions already for Markdown output
         if self.convert_admonition_md:
             lines = mkdocs_combine.filters.admonitions.AdmonitionFilter().run(lines)
         if self.filter_toc:

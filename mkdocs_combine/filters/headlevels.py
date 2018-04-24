@@ -20,22 +20,15 @@ import re
 class HeadlevelFilter(object):
     """Filter for increasing Markdown header levels (only Atx style)"""
 
-    def __init__(self, pages):
-        max_offset = 0
-
-        # Determine maximum header level from nesting in mkdocs.yml
-        for page in pages:
-            if page['level'] > max_offset:
-                max_offset = page['level']
-
-        self.offset = max_offset-1
+    def __init__(self, page):
+        self.page = page
 
 
     def run(self, lines):
         """Filter method"""
         ret = []
         for line in lines:
-            line = re.sub(r'^#', '#' * self.offset, line)
+            line = re.sub(r'^#', '#' * self.page.get_level(), line)
             line = re.sub(r'^#######+', '######', line)
             ret.append(line)
 

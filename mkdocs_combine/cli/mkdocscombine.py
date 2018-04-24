@@ -165,7 +165,7 @@ def main():
             strip_heading=args.strip_heading,
             add_page_break=args.add_page_break,
             numbered_headings=args.numbered_headings,
-            convert_admonition_md=args.convert_admonition_md
+            convert_admonition_md=args.convert_admonition_md,
             text_refs=args.text_refs
         )
     except FatalError as e:
