@@ -60,6 +60,12 @@ class Page(object):
     def get_headings(self):
         return self.headings
 
+    def get_heading_index(self):
+        return self.heading_index
+
+    def is_page_heading(self, heading):
+        return self.headings[0] == heading
+
     def get_level(self):
         level = 0
         current_page = self

@@ -93,7 +93,7 @@ class Heading(object):
         if numbered:
             number = self.get_number_string()
             if number is not None:
-                title = "#"*self.level + "{}  {}".format(number, title)
+                title =  "{} {}  {}".format("#"*self.level, number, title)
 
         if pandoc_id:
             title = "{} {{#{}}}".format(title, self.get_slug())

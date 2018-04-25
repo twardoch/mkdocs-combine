@@ -23,6 +23,9 @@ from mkdocs_combine.slugify import slugify
 def strip_extension(filepath):
     return posixpath.splitext(filepath)[0]
 
+def code_block_expr():
+    return r'[`][`][`]'
+
 class HeadingIndexer(object):
     def __init__(self, page, previous_heading, numbered_headings: bool):
         """
@@ -43,7 +46,17 @@ class HeadingIndexer(object):
         if self.previous_heading is not None:
             last_heading_number = self.previous_heading.get_number_array()
 
+        code_block = False
+
         for line in lines:
+            match = re.search(code_block_expr(), line)
+            if match != None:
+                code_block = not code_block
+                continue
+
+            if code_block:
+                continue
+
             # match on the headings
             match = re.search(r'^(#+)(.*)', line)
             if match != None:
@@ -97,10 +110,19 @@ class XrefFilter(object):
         """Filter method"""
 
         ret = list(lines)
+        code_block = False
 
         line_index = -1
         for line_index in range(0, len(lines)):
             line = ret[line_index]
+
+            match = re.search(code_block_expr(), line)
+            if match != None:
+                code_block = not code_block
+                continue
+
+            if code_block:
+                continue
 
             heading_expr = r'^(#+)(.*)'
             match = re.search(heading_expr, line)
@@ -109,12 +131,15 @@ class XrefFilter(object):
                 title = match.group(2).strip()
 
                 heading = Heading(title, level, self.page)
-
+                
                 indexed_heading = self.page.get_heading(heading.get_unique_title_slug())
 
                 while indexed_heading in self.processed_headings:
                     heading.set_unique_title_id(heading.get_unique_title_id() + 1)
                     indexed_heading = self.page.get_heading(heading.get_unique_title_slug())
+                    
+                    if self.page.is_page_heading(indexed_heading):
+                        break
                 
                 self.processed_headings.append(indexed_heading)
 
@@ -140,6 +165,10 @@ class XrefFilter(object):
 
                 if file is not None:
                     link_file = posixpath.normpath(posixpath.join(page_dir, file))
+
+                    if link_file[0] == '/':
+                        link_file = link_file[1:]
+
                     link_page = self.page_index[link_file]
                 else:
                     link_page = self.page
