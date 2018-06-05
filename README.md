@@ -1,6 +1,6 @@
 # mkdocs-combine
 
-2018-06-05: Note that MkDocs now supports plugins and I'll probably replace this project with a fork of [that one](https://github.com/shauser/mkdocs-pdf-export-plugin)
+**2018-06-05: Note that MkDocs now supports plugins that provide a better architecture for this task. I'll probably replace this project with a fork of [shauser's plugin](https://github.com/shauser/mkdocs-pdf-export-plugin)** — Adam
 
 [**`mkdocs-combine`**](https://github.com/twardoch/mkdocs-combine/) is a Python module that combines a [MkDocs](http://www.mkdocs.org/)-style Markdown source site into a single Markdown document. This is useful for
 
