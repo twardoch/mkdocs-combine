@@ -62,6 +62,10 @@ def parse_args():
                             help="write simple HTML to path ('-' for stdout)")
 
     args_struct = args.add_argument_group('structure')
+
+    args_strip_heading =  args_struct.add_argument('-s', '--strip-heading', dest='strip_heading', default=None,
+                                                   help="strip a section with the specified heading out of the document")
+
     args_strip_metadata = args_struct.add_mutually_exclusive_group(required=False)
     args_strip_metadata.add_argument('-y', '--meta', dest='strip_metadata', action='store_false',
                                      help='keep YAML metadata (default)')
@@ -69,14 +73,19 @@ def parse_args():
                                      help='strip YAML metadata')
     args.set_defaults(strip_metadata=False)
 
-    args_add_chapter_heads = args_struct.add_mutually_exclusive_group(required=False)
+    args_struct_headings = args_struct.add_argument_group('headings')
+    args_struct_headings.add_argument('--numbered-headings', dest='numbered_headings', action="store_true",
+                                      help="Number the headings")
+    args.set_defaults(numbered_headings=False)
+
+    args_add_chapter_heads = args_struct_headings.add_mutually_exclusive_group(required=False)
     args_add_chapter_heads.add_argument('-c', '--titles', dest='add_chapter_heads', action='store_true',
                                         help='add titles from mkdocs.yml to Markdown files (default)')
     args_add_chapter_heads.add_argument('-C', '--no-titles', dest='add_chapter_heads', action='store_false',
                                         help='do not add titles to Markdown files')
     args.set_defaults(add_chapter_heads=True)
 
-    args_increase_heads = args_struct.add_mutually_exclusive_group(required=False)
+    args_increase_heads = args_struct_headings.add_mutually_exclusive_group(required=False)
     args_increase_heads.add_argument('-u', '--up-levels', dest='increase_heads', action='store_true',
                                      help='increase ATX header levels in Markdown files (default)')
     args_increase_heads.add_argument('-k', '--keep-levels', dest='increase_heads', action='store_false',
@@ -106,8 +115,12 @@ def parse_args():
     args_filter_xrefs.add_argument('-r', '--refs', dest='filter_xrefs', action='store_false',
                                    help='keep MkDocs-style cross-references')
     args_filter_xrefs.add_argument('-R', '--no-refs', dest='filter_xrefs', action='store_true',
-                                   help='replace MkDocs-style cross-references by just their title (default)')
+                                   help='replace MkDocs-style cross-references')
     args.set_defaults(filter_xrefs=True)
+
+    args_links.add_argument('--text-refs', dest='text_refs', action='store_true',
+                             help="Whether or not to replace MkDocs-style cross references with text versions (rather than hyperlinks). This option is used in conjunction with --no-refs")
+    args.set_defaults(text_refs=False)
 
     args_strip_anchors = args_links.add_mutually_exclusive_group(required=False)
     args_strip_anchors.add_argument('-a', '--anchors', dest='strip_anchors', action='store_false',
@@ -149,8 +162,11 @@ def main():
             convert_math=args.convert_math,
             add_chapter_heads=args.add_chapter_heads,
             increase_heads=args.increase_heads,
+            strip_heading=args.strip_heading,
             add_page_break=args.add_page_break,
-            convert_admonition_md=args.convert_admonition_md
+            numbered_headings=args.numbered_headings,
+            convert_admonition_md=args.convert_admonition_md,
+            text_refs=args.text_refs
         )
     except FatalError as e:
         print(e.message, file=sys.stderr)
