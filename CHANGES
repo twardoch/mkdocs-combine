@@ -1,7 +1,19 @@
+0.3.1.2 by Daniel Nüst
+ 
+ * Add verbose option and some logging
+ * Single version definition in setup.py
+
+0.3.1.1 by Adam Twardoch:
+
+ * Compatibility fix for unicode filenames
+
 0.3.1.0 by Daniel Nüst:
 
- * Added admonition processing
- * Add verbose option and some logging
+* Added admonition processing
+
+0.3.0.1 by Jeff Hastings:
+
+ * Add ability to insert page breaks between pages
 
 0.3.0.0 by Adam Twardoch:
 

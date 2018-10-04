@@ -15,6 +15,7 @@
 #
 import codecs
 import os
+import sys
 
 import markdown
 import mkdocs.config
@@ -106,8 +107,13 @@ class MkDocsCombiner:
         """Recursively flattens pages data structure into a one-dimensional data structure"""
         flattened = []
 
+        if sys.version_info.major < 3:
+            str_type = (str, self.encoding, unicode)
+        else:
+            str_type = (str, self.encoding)
+
         for page in pages:
-            if type(page) in (str, self.encoding):
+            if type(page) in str_type:
                 flattened.append(
                     {
                         u'file' : page,
@@ -143,7 +149,6 @@ class MkDocsCombiner:
                             list(page.values())[0],
                             level + 1)
                     )
-
         return flattened
 
     def combine(self):
