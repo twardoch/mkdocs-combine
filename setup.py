@@ -17,7 +17,7 @@ setup(
     name='mkdocs-combine',
 
     # Versions should comply with PEP440.
-    version='0.3.1.2',
+    version='0.4.0.0',
 
     description='Combines a MkDocs Markdown site into a single Markdown file',
 
@@ -76,8 +76,8 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['mkdocs>=0.17.3',
-                      'Markdown>=2.6.11',
+    install_requires=['mkdocs>=1.0.4',
+                      'Markdown>=3.0.1',
                       'markdown-include>=0.5.1'
                       ],
 

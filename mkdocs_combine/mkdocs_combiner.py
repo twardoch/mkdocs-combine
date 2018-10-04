@@ -157,9 +157,18 @@ class MkDocsCombiner:
 
         if(self.verbose):
             self.log('Running mkdocs-combine in verbose mode')
+        
+        self.log(u'Configuration: {0}'.format(self.config))
 
-        pages = self.flatten_pages(self.config[u'pages'])
-
+        pages = []
+        if u'pages' in self.config and self.config[u'pages'] is not None:
+            pages = self.flatten_pages(self.config[u'pages'])
+            self.log('Pages: ')
+        else:
+            if u'nav' in self.config and self.config[u'nav'] is not None:
+                pages = self.flatten_pages(self.config[u'nav'])
+                self.log('Pages (using "nav" property): ')
+        
         f_exclude = mkdocs_combine.filters.exclude.ExcludeFilter(
             exclude=self.exclude)
 
