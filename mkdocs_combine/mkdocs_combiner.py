@@ -37,7 +37,7 @@ from mkdocs_combine.exceptions import FatalError
 
 
 class MkDocsCombiner:
-    """Top level converter class. Instatiate separately for each mkdocs.yml."""
+    """Top level converter class. Instantiate separately for each mkdocs.yml."""
 
     def __init__(self, **kwargs):
         self.config_file = kwargs.get('config_file', 'mkdocs.yml')
@@ -54,10 +54,13 @@ class MkDocsCombiner:
         self.add_page_break = kwargs.get('add_page_break', False)
         self.increase_heads = kwargs.get('increase_heads', True)
         self.convert_admonition_md = kwargs.get('convert_admonition_md', False)
+        self.verbose = kwargs.get('verbose', False)
         self.combined_md_lines = []
         self.html_bare = u''
         self.html = u''
 
+        self.log('Arguments: ' + str(kwargs))
+        
         try:
             cfg = codecs.open(self.config_file, 'r', self.encoding)
         except IOError as e:
@@ -94,6 +97,11 @@ class MkDocsCombiner:
                     self.filter_toc = True
 
         cfg.close()
+
+    def log(self, message):
+        """Print messages if verbose mode is activated"""
+        if(self.verbose):
+            print('[mkdocscombine] ' + message)
 
     def flatten_pages(self, pages, level=1):
         """Recursively flattens pages data structure into a one-dimensional data structure"""
@@ -144,12 +152,23 @@ class MkDocsCombiner:
         return flattened
 
     def combine(self):
-        """User-facing conversion method. Returns combined document as a list of
-        lines."""
+        """User-facing conversion method. Returns combined document as a list of lines."""
         lines = []
 
-        pages = self.flatten_pages(self.config[u'pages'])
+        if(self.verbose):
+            self.log('Running mkdocs-combine in verbose mode')
+        
+        self.log(u'Configuration: {0}'.format(self.config))
 
+        pages = []
+        if u'pages' in self.config and self.config[u'pages'] is not None:
+            pages = self.flatten_pages(self.config[u'pages'])
+            self.log('Pages: ')
+        else:
+            if u'nav' in self.config and self.config[u'nav'] is not None:
+                pages = self.flatten_pages(self.config[u'nav'])
+                self.log('Pages (using "nav" property): ')
+        
         f_exclude = mkdocs_combine.filters.exclude.ExcludeFilter(
             exclude=self.exclude)
 
@@ -206,23 +225,30 @@ class MkDocsCombiner:
 
         # Strip anchor tags
         if self.strip_anchors:
+            self.log('Stripping anchor tags')
             lines = mkdocs_combine.filters.anchors.AnchorFilter().run(lines)
 
         # Convert math expressions
         if self.convert_math:
+            self.log('Converting math expressions')
             lines = mkdocs_combine.filters.math.MathFilter().run(lines)
 
         # Fix cross references
         if self.filter_xrefs:
+            self.log('Fixing cross references')
             lines = mkdocs_combine.filters.xref.XrefFilter().run(lines)
 
         # Convert admonitions already for Markdown output
         if self.convert_admonition_md:
+            self.log('Converting admonitions to HTML in Markdown output')
             lines = mkdocs_combine.filters.admonitions.AdmonitionFilter().run(lines)
+
         if self.filter_toc:
+            self.log('Creating TOC')
             lines = mkdocs_combine.filters.toc.TocFilter().run(lines)
 
         if self.filter_tables:
+            self.log('Filtering tables')
             lines = mkdocs_combine.filters.tables.TableFilter().run(lines)
 
         self.combined_md_lines = lines

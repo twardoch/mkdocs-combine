@@ -30,6 +30,12 @@ Note that if you are behind a proxy, you might need to add the `--proxy` option 
 pip --proxy=http[s]://user@mydomain:port install ...
 ```
 
+If you'd like to install a local development version from the current path, use
+
+```
+pip install -e .
+```
+
 ## Pandoc compatibility
 
 For generating PDF through `pandoc` you will need to install a few things `pip` won't handle, namely `pandoc` and the somewhat exotic LaTeX packages its default LaTeX template uses. On a Ubuntu 14.04 system this amounts to the following packages:
@@ -67,6 +73,7 @@ document
 optional arguments:
   -h, --help            show this help message and exit
   -V, --version         show program's version number and exit
+  -v, --verbose         print additional info during execution
 
 files:
   -o OUTFILE, --outfile OUTFILE

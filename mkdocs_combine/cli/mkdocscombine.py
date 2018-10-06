@@ -26,8 +26,8 @@ import sys
 import mkdocs_combine
 from mkdocs_combine.exceptions import FatalError
 
-__version__ = '0.3.1.1'
-
+from pkg_resources import get_distribution
+__version__ = get_distribution('mkdocs-combine').version
 
 def stdout_file(encoding):
     # Python 2 and Python 3 have mutually incompatible approaches to writing
@@ -42,12 +42,12 @@ def stdout_file(encoding):
 def parse_args():
     args = argparse.ArgumentParser(
         description="mkdocscombine.py " +
-                    "- combines an MkDocs source site into a single Markdown document")
+        "- combines an MkDocs source site into a single Markdown document")
 
     args.add_argument('-V', '--version', action='version',
                       version='%(prog)s {version}'.format(version=__version__))
-    # args.add_argument('-v', '--verbose', dest='verbose', action='store_true', default=False,
-    #                  help="print additional info")
+    args.add_argument('-v', '--verbose', dest='verbose', action='store_true',
+                      help="print additional info during execution")
 
     args_files = args.add_argument_group('files')
     args_files.add_argument('-o', '--outfile', dest='outfile', default=None,
@@ -150,11 +150,13 @@ def main():
             add_chapter_heads=args.add_chapter_heads,
             increase_heads=args.increase_heads,
             add_page_break=args.add_page_break,
+            verbose=args.verbose,
             convert_admonition_md=args.convert_admonition_md
         )
     except FatalError as e:
         print(e.message, file=sys.stderr)
-        return (e.status)
+        return e.status
+
     mkdocs_combiner.combine()
 
     combined_md_file = None

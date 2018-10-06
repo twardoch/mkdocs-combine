@@ -1,3 +1,9 @@
+0.4.0.0 by Daniel Nüst
+ 
+ * Add verbose option and some logging
+ * Single version definition in setup.py
+ * Switch to mkdocs 1.0.4 or later, incl. support for new "nav" config property, which deprecates "pages", see https://github.com/mkdocs/mkdocs/pull/1504
+
 0.3.1.1 by Adam Twardoch:
 
  * Compatibility fix for unicode filenames
