@@ -32,11 +32,15 @@ class HeadlevelFilter(object):
 
 
     def run(self, lines):
+        not_in_code_block = True
         """Filter method"""
         ret = []
         for line in lines:
-            line = re.sub(r'^#', '#' * self.offset, line)
-            line = re.sub(r'^#######+', '######', line)
+            if '```' in line:
+                not_in_code_block = not not_in_code_block
+            if not_in_code_block == True:
+                line = re.sub(r'^#', '#' * self.offset, line)
+                line = re.sub(r'^#######+', '######', line)
             ret.append(line)
 
         return ret
