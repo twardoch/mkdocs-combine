@@ -15,6 +15,7 @@
 #
 import codecs
 import os
+from pathlib import Path
 import sys
 
 import markdown
@@ -114,10 +115,11 @@ class MkDocsCombiner:
 
         for page in pages:
             if type(page) in str_type:
+                file_path = Path(page)
                 flattened.append(
                     {
                         u'file' : page,
-                        u'title': u'%s {: .page-title}' % mkdocs.utils.filename_to_title(page),
+                        u'title': u'%s {: .page-title}' % mkdocs.utils.get_markdown_title(file_path.open('r').read()),
                         u'level': level,
                     })
             if type(page) is list:
