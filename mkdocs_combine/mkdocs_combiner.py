@@ -117,10 +117,11 @@ class MkDocsCombiner:
         for page in pages:
             if type(page) in str_type:
                 file_path = docs_dir / page
+                doc_title = mkdocs.utils.get_markdown_title(file_path.open('r').read())
                 flattened.append(
                     {
                         u'file' : page,
-                        u'title': u'%s {: .page-title}' % mkdocs.utils.get_markdown_title(file_path.open('r').read()),
+                        u'title': u'%s {: .page-title}' % doc_title,
                         u'level': level,
                     })
             if type(page) is list:
