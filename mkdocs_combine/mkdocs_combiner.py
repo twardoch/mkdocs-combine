@@ -113,9 +113,10 @@ class MkDocsCombiner:
         else:
             str_type = (str, self.encoding)
 
+        docs_dir = Path(self.config['docs_dir'])
         for page in pages:
             if type(page) in str_type:
-                file_path = Path(page)
+                file_path = docs_dir / page
                 flattened.append(
                     {
                         u'file' : page,
