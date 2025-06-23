@@ -18,7 +18,7 @@
 
 import markdown.extensions.admonition as adm
 import markdown.blockparser
-from markdown.util import etree
+from xml.etree import ElementTree as etree
 
 class AdmonitionFilter(adm.AdmonitionProcessor):
 

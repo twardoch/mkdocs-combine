@@ -17,7 +17,7 @@
 import re
 
 class MathFilter(object):
-    """Turn the \( \) Markdown math notation into LaTex $$ inlines"""
+    r"""Turn the \( \) Markdown math notation into LaTex $$ inlines"""
 
     def run(self, lines):
         """Filter method"""

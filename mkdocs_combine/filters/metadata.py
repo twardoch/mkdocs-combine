@@ -17,7 +17,7 @@
 import re
 
 class MetadataFilter(object):
-    """Turn the \( \) Markdown math notation into LaTex $$ inlines"""
+    r"""Strip out metadata from the beginning of the file"""
 
     def run(self, lines):
         """Filter method"""

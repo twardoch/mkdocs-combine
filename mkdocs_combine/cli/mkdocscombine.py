@@ -119,9 +119,9 @@ def parse_args():
     args_extras = args.add_argument_group('extras')
     args_convert_math = args_extras.add_mutually_exclusive_group(required=False)
     args_convert_math.add_argument('-m', '--math', dest='convert_math', action='store_false',
-                                   help='keep \( \) Markdown math notation as is (default)')
+                                   help=r'keep \( \) Markdown math notation as is (default)')
     args_convert_math.add_argument('-l', '--latex', dest='convert_math', action='store_true',
-                                   help='combine the \( \) Markdown math into LaTeX $$ inlines')
+                                   help=r'combine the \( \) Markdown math into LaTeX $$ inlines')
     args.set_defaults(convert_math=False)
 
     args_extras.add_argument('-i', '--image-ext', dest='image_ext', default=None,

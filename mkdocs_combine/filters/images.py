@@ -49,7 +49,7 @@ class ImageFilter(object):
                     if match.group(0) in processed:
                         break
                     # Skip URLs
-                    if re.match('\w+://', match.group(2)):
+                    if re.match(r'\w+://', match.group(2)):
                         break
                     alt = match.group(1)
                     img_name = match.group(2)
