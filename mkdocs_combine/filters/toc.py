@@ -15,13 +15,14 @@
 
 import re
 
-class TocFilter(object):
+
+class TocFilter:
     """Strips out python-markdown [TOC] keyword"""
 
     def run(self, lines):
         """Filter method"""
         ret = []
         for line in lines:
-            ret.append(re.sub(r'^\s*\[TOC\]\s*', '', line))
+            ret.append(re.sub(r"^\s*\[TOC\]\s*", "", line))
 
         return ret

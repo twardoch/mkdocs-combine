@@ -18,7 +18,8 @@ import re
 # TODO: Implement working cross-references (for now they are simply replaced by
 #       their link titles).
 
-class XrefFilter(object):
+
+class XrefFilter:
     """Replaces mkdocs style cross-references by just their title"""
 
     def run(self, lines):
@@ -26,10 +27,12 @@ class XrefFilter(object):
         ret = []
         for line in lines:
             while True:
-                match = re.search(r'[^!]\[([^\]]+?)\]\(([^http].*?)\)', line)
-                if match != None:
+                match = re.search(r"[^!]\[([^\]]+?)\]\(([^http].*?)\)", line)
+                if match is not None:
                     title = match.group(1)
-                    line = re.sub(r'[^!]\[[^\]]+?\]\([^http].*?\)', title, line, count=1)
+                    line = re.sub(
+                        r"[^!]\[[^\]]+?\]\([^http].*?\)", title, line, count=1
+                    )
                 else:
                     break
             ret.append(line)

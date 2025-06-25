@@ -16,17 +16,17 @@
 #
 # mdtableconv.py - converts pipe tables to Pandoc's grid tables
 
-import markdown.extensions.tables as tbl
-import markdown.blockparser
 import re
-import string
 import textwrap
 
-class TableFilter(tbl.TableProcessor):
-    def __init__(self, width=100, encoding='utf-8'):
-        self.width = width
-        self.width_default = 20   # Default column width for rogue rows with more cells than the first row.
+import markdown.blockparser
+import markdown.extensions.tables as tbl
 
+
+class TableFilter(tbl.TableProcessor):
+    def __init__(self, width=100, encoding="utf-8"):
+        self.width = width
+        self.width_default = 20  # Default column width for rogue rows with more cells than the first row.
 
     def blocks(self, lines):
         """Groups lines into markdown blocks"""
@@ -34,19 +34,19 @@ class TableFilter(tbl.TableProcessor):
         blocks = []
 
         # We use three states: start, ``` and '\n'
-        state.set('start')
+        state.set("start")
 
         # index of current block
         currblock = 0
 
         for line in lines:
-            line += '\n'
-            if state.isstate('start'):
-                if line[:3] == '```':
-                    state.set('```')
+            line += "\n"
+            if state.isstate("start"):
+                if line[:3] == "```":
+                    state.set("```")
                 else:
-                    state.set('\n')
-                blocks.append('')
+                    state.set("\n")
+                blocks.append("")
                 currblock = len(blocks) - 1
             else:
                 marker = line[:3]  # Will capture either '\n' or '```'
@@ -56,34 +56,33 @@ class TableFilter(tbl.TableProcessor):
 
         return blocks
 
-
     def convert_table(self, block):
-        """"Converts a table to grid table format"""
-        lines_orig = block.split('\n')
-        lines_orig.pop() # Remove extra newline at end of block
-        widest_cell = [] # Will hold the width of the widest cell for each column
-        widest_word = [] # Will hold the width of the widest word for each column
-        widths = []      # Will hold the computed widths of grid table columns
+        """ "Converts a table to grid table format"""
+        lines_orig = block.split("\n")
+        lines_orig.pop()  # Remove extra newline at end of block
+        widest_cell = []  # Will hold the width of the widest cell for each column
+        widest_word = []  # Will hold the width of the widest word for each column
+        widths = []  # Will hold the computed widths of grid table columns
 
-        rows = []   # Will hold table cells during processing
+        rows = []  # Will hold table cells during processing
         lines = []  # Will hold the finished table
 
         has_border = False  # Will be set to True if this is a bordered table
 
-        width_unit = 0.0 # This number is used to divide up self.width according
-                         # to the following formula:
-                         #
-                         # self.width = width_unit * maxwidth
-                         #
-                         # Where maxwidth is the sum over all elements of
-                         # widest_cell.
+        width_unit = 0.0  # This number is used to divide up self.width according
+        # to the following formula:
+        #
+        # self.width = width_unit * maxwidth
+        #
+        # Where maxwidth is the sum over all elements of
+        # widest_cell.
 
         # Only process tables, leave everything else untouched
 
         if not self.test(None, block):
             return lines_orig
 
-        if lines_orig[0].startswith('|'):
+        if lines_orig[0].startswith("|"):
             has_border = True
 
         # Initialize width arrays
@@ -110,9 +109,9 @@ class TableFilter(tbl.TableProcessor):
                 words = row[i].split()
                 for word in words:
                     # Keep URLs from throwing the word length count off too badly.
-                    match = re.match(r'\[(.*?)\]\(.*?\)', word)
+                    match = re.match(r"\[(.*?)\]\(.*?\)", word)
                     if match:
-                       word = match.group(1)
+                        word = match.group(1)
 
                     if len(word) > widest_word[i]:
                         widest_word[i] = len(word)
@@ -149,25 +148,24 @@ class TableFilter(tbl.TableProcessor):
                         widths[i] += offset
                         offset = 0
 
-        lines.append(self.ruler_line(widths, linetype='-'))
+        lines.append(self.ruler_line(widths, linetype="-"))
 
         # Only add header row if it contains more than just whitespace
-        if ''.join(rows[0]).strip() != '':
-                lines.extend(self.wrap_row(widths, rows[0]))
-                lines.append(self.ruler_line(widths, linetype='='))
+        if "".join(rows[0]).strip() != "":
+            lines.extend(self.wrap_row(widths, rows[0]))
+            lines.append(self.ruler_line(widths, linetype="="))
 
         for row in rows[1:]:
             # Skip empty rows
-            if ''.join(row).strip() == '':
+            if "".join(row).strip() == "":
                 continue
             lines.extend(self.wrap_row(widths, row))
-            lines.append(self.ruler_line(widths, linetype='-'))
+            lines.append(self.ruler_line(widths, linetype="-"))
 
         # Append empty line after table
-        lines.append('')
+        lines.append("")
 
         return lines
-
 
     def run(self, lines):
         """Filter method: Passes all blocks through convert_table() and returns a list of lines."""
@@ -178,43 +176,41 @@ class TableFilter(tbl.TableProcessor):
 
         return ret
 
-
-    def ruler_line(self, widths, linetype='-'):
+    def ruler_line(self, widths, linetype="-"):
         """Generates a ruler line for separating rows from each other"""
         cells = []
         for w in widths:
-            cells.append(linetype * (w+2))
-        return '+' + '+'.join(cells) + '+'
-
+            cells.append(linetype * (w + 2))
+        return "+" + "+".join(cells) + "+"
 
     def wrap_row(self, widths, row, width_default=None):
         """Wraps a single line table row into a fixed width, multi-line table."""
         lines = []
-        longest = 0 # longest wrapped column in row
+        longest = 0  # longest wrapped column in row
 
         if not width_default:
             width_default = self.width_default
 
         # Wrap column contents
         for i in range(0, len(row)):
-            w=width_default # column width
+            w = width_default  # column width
 
             # Only set column width dynamicaly for non-rogue rows
             if i < len(widths):
-              w = widths[i]
+                w = widths[i]
 
             tw = textwrap.TextWrapper(width=w, break_on_hyphens=False)
             # Wrap and left-justify
             row[i] = tw.wrap(textwrap.dedent(row[i]))
             # Pad with spaces up to to fixed column width
             for l in range(0, len(row[i])):
-                    row[i][l] += (w - len(row[i][l])) * ' '
+                row[i][l] += (w - len(row[i][l])) * " "
             if len(row[i]) > longest:
                 longest = len(row[i])
 
         # Pad all columns to have the same number of lines
         for i in range(0, len(row)):
-            w=width_default # column width
+            w = width_default  # column width
 
             # Only set column width dynamicaly for non-rogue rows
             if i < len(widths):
@@ -222,13 +218,13 @@ class TableFilter(tbl.TableProcessor):
 
             if len(row[i]) < longest:
                 for j in range(len(row[i]), longest):
-                    row[i].append(w * ' ')
+                    row[i].append(w * " ")
 
-        for l in range(0,longest):
+        for l in range(0, longest):
             line = []
             for c in range(len(row)):
                 line.append(row[c][l])
-            line = '| ' + ' | '.join(line) + ' |'
+            line = "| " + " | ".join(line) + " |"
             lines.append(line)
 
         return lines

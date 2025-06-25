@@ -16,8 +16,9 @@
 
 import re
 
-class MetadataFilter(object):
-    """Turn the \( \) Markdown math notation into LaTex $$ inlines"""
+
+class MetadataFilter:
+    r"""Turn the \( \) Markdown math notation into LaTex $$ inlines"""
 
     def run(self, lines):
         """Filter method"""
@@ -25,7 +26,7 @@ class MetadataFilter(object):
         header = True
         for line in lines:
             if header:
-                if not re.match(r'^[a-zA-Z\ ]:', line):
+                if not re.match(r"^[a-zA-Z\ ]:", line):
                     header = False
                     ret.append(line)
             else:

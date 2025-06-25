@@ -13,20 +13,20 @@
 # limitations under the License.
 #
 
-class ChapterheadFilter(object):
+
+class ChapterheadFilter:
     """Filter for adding chapter titles from mkdocs.yml to chapter files"""
 
     def __init__(self, **kwargs):
-        self.headlevel = kwargs.get('headlevel', 1)
-        self.title = kwargs.get('title', None)
-        if self.title == None:
-            raise ValueError(
-                    'Mandatory keyword argument `title` missing.')
+        self.headlevel = kwargs.get("headlevel", 1)
+        self.title = kwargs.get("title", None)
+        if self.title is None:
+            raise ValueError("Mandatory keyword argument `title` missing.")
 
     def run(self, lines):
         """Filter method"""
 
-        head = [('#' * self.headlevel) + ' ' + self.title, '']
+        head = [("#" * self.headlevel) + " " + self.title, ""]
 
         head.extend(lines)
 

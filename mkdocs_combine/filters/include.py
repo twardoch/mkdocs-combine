@@ -15,12 +15,11 @@
 """Wrapper for using markdown.markdown_include as simple preprocessor (just
 pulls in includes without running the HTML generator)"""
 
-from __future__ import print_function
 import markdown_include.include as incl
 
 
 ### This class is merely a wrapper for providing markdown_include.include
 class IncludeFilter(incl.IncludePreprocessor):
     def __init__(self, **kwargs):
-        self.base_path = kwargs.get('base_path', '.')
-        self.encoding = kwargs.get('encoding', 'utf-8')
+        self.base_path = kwargs.get("base_path", ".")
+        self.encoding = kwargs.get("encoding", "utf-8")

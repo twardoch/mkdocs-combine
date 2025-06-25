@@ -17,7 +17,8 @@ import re
 
 # TODO: Implement handling for Setext style headers.
 
-class HeadlevelFilter(object):
+
+class HeadlevelFilter:
     """Filter for increasing Markdown header levels (only Atx style)"""
 
     def __init__(self, pages):
@@ -25,22 +26,21 @@ class HeadlevelFilter(object):
 
         # Determine maximum header level from nesting in mkdocs.yml
         for page in pages:
-            if page['level'] > max_offset:
-                max_offset = page['level']
+            if page["level"] > max_offset:
+                max_offset = page["level"]
 
         self.offset = max_offset
-
 
     def run(self, lines):
         not_in_code_block = True
         """Filter method"""
         ret = []
         for line in lines:
-            if '```' in line:
+            if "```" in line:
                 not_in_code_block = not not_in_code_block
-            if not_in_code_block == True:
-                line = re.sub(r'^#', '#' * self.offset, line)
-                line = re.sub(r'^#######+', '######', line)
+            if not_in_code_block is True:
+                line = re.sub(r"^#", "#" * self.offset, line)
+                line = re.sub(r"^#######+", "######", line)
             ret.append(line)
 
         return ret

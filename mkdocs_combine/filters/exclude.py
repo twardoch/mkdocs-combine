@@ -15,19 +15,20 @@
 
 import re
 
-class ExcludeFilter(object):
+
+class ExcludeFilter:
     """Removes selected mkdown_include include statements (useful for excluding
     a macros include pulled in by every chapter)"""
 
     def __init__(self, **kwargs):
-        self.exclude = kwargs.get('exclude', [])
+        self.exclude = kwargs.get("exclude", [])
 
     def run(self, lines):
         """Filter method"""
         ret = []
         for line in lines:
             for exclude in self.exclude:
-                line = re.sub(r'\{!%s!\}' % exclude, '', line)
+                line = re.sub(r"\{!%s!\}" % exclude, "", line)
             ret.append(line)
 
         return ret

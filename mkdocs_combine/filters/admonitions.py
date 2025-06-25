@@ -16,13 +16,13 @@
 #
 # mdtableconv.py - converts pipe tables to Pandoc's grid tables
 
-import markdown.extensions.admonition as adm
 import markdown.blockparser
+import markdown.extensions.admonition as adm
 from markdown.util import etree
 
-class AdmonitionFilter(adm.AdmonitionProcessor):
 
-    def __init__(self, encoding='utf-8', tab_length = 4):
+class AdmonitionFilter(adm.AdmonitionProcessor):
+    def __init__(self, encoding="utf-8", tab_length=4):
         self.encoding = encoding
         self.tab_length = tab_length
 
@@ -32,19 +32,19 @@ class AdmonitionFilter(adm.AdmonitionProcessor):
         blocks = []
 
         # We use three states: start, ``` and '\n'
-        state.set('start')
+        state.set("start")
 
         # index of current block
         currblock = 0
 
         for line in lines:
-            line += '\n'
-            if state.isstate('start'):
-                if line[:3] == '```':
-                    state.set('```')
+            line += "\n"
+            if state.isstate("start"):
+                if line[:3] == "```":
+                    state.set("```")
                 else:
-                    state.set('\n')
-                blocks.append('')
+                    state.set("\n")
+                blocks.append("")
                 currblock = len(blocks) - 1
             else:
                 marker = line[:3]  # Will capture either '\n' or '```'
@@ -60,34 +60,32 @@ class AdmonitionFilter(adm.AdmonitionProcessor):
 
         blocks = self.blocks(lines)
         for block in blocks:
-
             ret.extend(self.convert_admonition(block))
 
         return ret
 
     def convert_admonition(self, block):
-        lines = block.split('\n')
+        lines = block.split("\n")
 
         if self.RE.search(block):
-
             m = self.RE.search(lines.pop(0))
             klass, title = self.get_class_and_title(m)
-            
-            lines = list(map(lambda x:self.detab(x)[0], lines))
-            lines = '\n'.join(lines[:-1])
-            
-            div = etree.Element('div')
-            div.set('class', '%s %s' % (self.CLASSNAME, klass))
+
+            lines = list(map(lambda x: self.detab(x)[0], lines))
+            lines = "\n".join(lines[:-1])
+
+            div = etree.Element("div")
+            div.set("class", f"{self.CLASSNAME} {klass}")
             if title:
-                p = etree.SubElement(div, 'p')
-                p.set('class', self.CLASSNAME_TITLE)
+                p = etree.SubElement(div, "p")
+                p.set("class", self.CLASSNAME_TITLE)
                 p.text = title
 
-            content = etree.SubElement(div, 'p')
+            content = etree.SubElement(div, "p")
             content.text = lines
 
             string = etree.tostring(div).decode(self.encoding)
             lines = [string]
-            lines.append('')
+            lines.append("")
 
         return lines

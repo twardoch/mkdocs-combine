@@ -15,13 +15,14 @@
 
 import re
 
-class AnchorFilter(object):
+
+class AnchorFilter:
     """Strips out HTML anchor tags"""
 
     def run(self, lines):
         """Filter method"""
         ret = []
         for line in lines:
-            ret.append(re.sub(r'<a.*?</a>', '', line))
+            ret.append(re.sub(r"<a.*?</a>", "", line))
 
         return ret

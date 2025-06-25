@@ -13,19 +13,19 @@
 # limitations under the License.
 #
 
-from __future__ import print_function
 import os
 import re
 
 
-class ImageFilter(object):
+class ImageFilter:
     """Filter for adjusting image targets (absolute file names, optionally
     different extensions"""
+
     def __init__(self, **kwargs):
-        self.filename = kwargs.get('filename', None)
-        self.image_path = kwargs.get('image_path', None)
-        self.adjust_path = kwargs.get('adjust_path', True)
-        self.image_ext = kwargs.get('image_ext', None)
+        self.filename = kwargs.get("filename", None)
+        self.image_path = kwargs.get("image_path", None)
+        self.adjust_path = kwargs.get("adjust_path", True)
+        self.image_ext = kwargs.get("image_ext", None)
 
     def run(self, lines):
         """Filter method"""
@@ -38,10 +38,10 @@ class ImageFilter(object):
         for line in lines:
             processed = {}
             while True:
-                alt = ''
-                img_name = ''
+                alt = ""
+                img_name = ""
 
-                match = re.search(r'!\[(.*?)\]\((.*?)\)', line)
+                match = re.search(r"!\[(.*?)\]\((.*?)\)", line)
 
                 # Make sure there is in fact an image file name
                 if match:
@@ -49,7 +49,7 @@ class ImageFilter(object):
                     if match.group(0) in processed:
                         break
                     # Skip URLs
-                    if re.match('\w+://', match.group(2)):
+                    if re.match(r"\w+://", match.group(2)):
                         break
                     alt = match.group(1)
                     img_name = match.group(2)
@@ -57,29 +57,30 @@ class ImageFilter(object):
                     break
 
                 if self.image_ext:
-                    img_name = re.sub(r'\.\w+$', '.' + self.image_ext, img_name)
+                    img_name = re.sub(r"\.\w+$", "." + self.image_ext, img_name)
 
                 if self.adjust_path and (self.image_path or self.filename):
                     # explicitely specified image path takes precedence over
                     # path relative to chapter
                     if self.image_path and self.filename:
                         img_name = os.path.join(
-                                os.path.abspath(self.image_path),
-                                os.path.dirname(self.filename),
-                                img_name)
+                            os.path.abspath(self.image_path),
+                            os.path.dirname(self.filename),
+                            img_name,
+                        )
 
                     # generate image path relative to file name
                     if self.filename and (not self.image_path):
                         img_name = os.path.join(
-                                os.path.abspath(
-                                    os.path.dirname(self.filename)),
-                                img_name)
-                    
+                            os.path.abspath(os.path.dirname(self.filename)), img_name
+                        )
+
                 # handle Windows '\', although this adds a small amount of unnecessary work on Unix systems
-                img_name = img_name.replace(os.path.sep, '/')
-                             
-                line = re.sub(r'!\[(.*?)\]\((.*?)\)',
-                        '![%s](%s)' % (alt, img_name), line)
+                img_name = img_name.replace(os.path.sep, "/")
+
+                line = re.sub(
+                    r"!\[(.*?)\]\((.*?)\)", f"![{alt}]({img_name})", line
+                )
 
                 # Mark this image as processed
                 processed[match.group(0)] = True
