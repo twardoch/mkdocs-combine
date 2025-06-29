@@ -1,0 +1,2102 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+mkdocs_combine/
+  cli/
+    mkdocscombine.py
+  filters/
+    admonitions.py
+    anchors.py
+    chapterhead.py
+    exclude.py
+    headlevels.py
+    images.py
+    include.py
+    math.py
+    metadata.py
+    tables.py
+    toc.py
+    xref.py
+  __init__.py
+  exceptions.py
+  mkdocs_combiner.py
+_config.yml
+.gitignore
+CHANGES
+install-macos.command
+LICENSE
+py-requirements.txt
+README.md
+setup.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="mkdocs_combine/__init__.py">
+from mkdocs_combine.mkdocs_combiner import MkDocsCombiner
+</file>
+
+<file path="_config.yml">
+theme: jekyll-theme-minimal
+</file>
+
+<file path="install-macos.command">
+#!/usr/bin/env bash
+
+dir=${0%/*}
+if [ "$dir" = "$0" ]; then
+  dir="."
+fi
+cd "$dir"
+
+# Install me
+pip install --user --upgrade -r py-requirements.txt
+pip install --user --upgrade .
+echo "# Done!"
+</file>
+
+<file path="mkdocs_combine/filters/admonitions.py">
+#!/usr/bin/python
+#
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# mdtableconv.py - converts pipe tables to Pandoc's grid tables
+
+import markdown.blockparser
+import markdown.extensions.admonition as adm
+from markdown.util import etree
+
+
+class AdmonitionFilter(adm.AdmonitionProcessor):
+    def __init__(self, encoding="utf-8", tab_length=4):
+        self.encoding = encoding
+        self.tab_length = tab_length
+
+    def blocks(self, lines):
+        """Groups lines into markdown blocks"""
+        state = markdown.blockparser.State()
+        blocks = []
+
+        # We use three states: start, ``` and '\n'
+        state.set("start")
+
+        # index of current block
+        currblock = 0
+
+        for line in lines:
+            line += "\n"
+            if state.isstate("start"):
+                if line[:3] == "```":
+                    state.set("```")
+                else:
+                    state.set("\n")
+                blocks.append("")
+                currblock = len(blocks) - 1
+            else:
+                marker = line[:3]  # Will capture either '\n' or '```'
+                if state.isstate(marker):
+                    state.reset()
+            blocks[currblock] += line
+
+        return blocks
+
+    def run(self, lines):
+        """Filter method: Passes all blocks through convert_admonition() and returns a list of lines."""
+        ret = []
+
+        blocks = self.blocks(lines)
+        for block in blocks:
+            ret.extend(self.convert_admonition(block))
+
+        return ret
+
+    def convert_admonition(self, block):
+        lines = block.split("\n")
+
+        if self.RE.search(block):
+            m = self.RE.search(lines.pop(0))
+            klass, title = self.get_class_and_title(m)
+
+            lines = list(map(lambda x: self.detab(x)[0], lines))
+            lines = "\n".join(lines[:-1])
+
+            div = etree.Element("div")
+            div.set("class", f"{self.CLASSNAME} {klass}")
+            if title:
+                p = etree.SubElement(div, "p")
+                p.set("class", self.CLASSNAME_TITLE)
+                p.text = title
+
+            content = etree.SubElement(div, "p")
+            content.text = lines
+
+            string = etree.tostring(div).decode(self.encoding)
+            lines = [string]
+            lines.append("")
+
+        return lines
+</file>
+
+<file path="mkdocs_combine/filters/anchors.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import re
+
+
+class AnchorFilter:
+    """Strips out HTML anchor tags"""
+
+    def run(self, lines):
+        """Filter method"""
+        ret = []
+        for line in lines:
+            ret.append(re.sub(r"<a.*?</a>", "", line))
+
+        return ret
+</file>
+
+<file path="mkdocs_combine/filters/chapterhead.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+
+class ChapterheadFilter:
+    """Filter for adding chapter titles from mkdocs.yml to chapter files"""
+
+    def __init__(self, **kwargs):
+        self.headlevel = kwargs.get("headlevel", 1)
+        self.title = kwargs.get("title", None)
+        if self.title is None:
+            raise ValueError("Mandatory keyword argument `title` missing.")
+
+    def run(self, lines):
+        """Filter method"""
+
+        head = [("#" * self.headlevel) + " " + self.title, ""]
+
+        head.extend(lines)
+
+        return head
+</file>
+
+<file path="mkdocs_combine/filters/exclude.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import re
+
+
+class ExcludeFilter:
+    """Removes selected mkdown_include include statements (useful for excluding
+    a macros include pulled in by every chapter)"""
+
+    def __init__(self, **kwargs):
+        self.exclude = kwargs.get("exclude", [])
+
+    def run(self, lines):
+        """Filter method"""
+        ret = []
+        for line in lines:
+            for exclude in self.exclude:
+                line = re.sub(r"\{!%s!\}" % exclude, "", line)
+            ret.append(line)
+
+        return ret
+</file>
+
+<file path="mkdocs_combine/filters/images.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import os
+import re
+
+
+class ImageFilter:
+    """Filter for adjusting image targets (absolute file names, optionally
+    different extensions"""
+
+    def __init__(self, **kwargs):
+        self.filename = kwargs.get("filename", None)
+        self.image_path = kwargs.get("image_path", None)
+        self.adjust_path = kwargs.get("adjust_path", True)
+        self.image_ext = kwargs.get("image_ext", None)
+
+    def run(self, lines):
+        """Filter method"""
+        # Nothing to do in this case
+        if (not self.adjust_path) and (not self.image_ext):
+            return lines
+
+        ret = []
+
+        for line in lines:
+            processed = {}
+            while True:
+                alt = ""
+                img_name = ""
+
+                match = re.search(r"!\[(.*?)\]\((.*?)\)", line)
+
+                # Make sure there is in fact an image file name
+                if match:
+                    # Skip images we already processed
+                    if match.group(0) in processed:
+                        break
+                    # Skip URLs
+                    if re.match(r"\w+://", match.group(2)):
+                        break
+                    alt = match.group(1)
+                    img_name = match.group(2)
+                else:
+                    break
+
+                if self.image_ext:
+                    img_name = re.sub(r"\.\w+$", "." + self.image_ext, img_name)
+
+                if self.adjust_path and (self.image_path or self.filename):
+                    # explicitely specified image path takes precedence over
+                    # path relative to chapter
+                    if self.image_path and self.filename:
+                        img_name = os.path.join(
+                            os.path.abspath(self.image_path),
+                            os.path.dirname(self.filename),
+                            img_name,
+                        )
+
+                    # generate image path relative to file name
+                    if self.filename and (not self.image_path):
+                        img_name = os.path.join(
+                            os.path.abspath(os.path.dirname(self.filename)), img_name
+                        )
+
+                # handle Windows '\', although this adds a small amount of unnecessary work on Unix systems
+                img_name = img_name.replace(os.path.sep, "/")
+
+                line = re.sub(
+                    r"!\[(.*?)\]\((.*?)\)", f"![{alt}]({img_name})", line
+                )
+
+                # Mark this image as processed
+                processed[match.group(0)] = True
+
+            ret.append(line)
+
+        return ret
+</file>
+
+<file path="mkdocs_combine/filters/include.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+"""Wrapper for using markdown.markdown_include as simple preprocessor (just
+pulls in includes without running the HTML generator)"""
+
+import markdown_include.include as incl
+
+
+### This class is merely a wrapper for providing markdown_include.include
+class IncludeFilter(incl.IncludePreprocessor):
+    def __init__(self, **kwargs):
+        self.base_path = kwargs.get("base_path", ".")
+        self.encoding = kwargs.get("encoding", "utf-8")
+</file>
+
+<file path="mkdocs_combine/filters/math.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+# Copyright 2016 Kergonath <kergonath@me.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import re
+
+
+class MathFilter:
+    r"""Turn the \( \) Markdown math notation into LaTex $$ inlines"""
+
+    def run(self, lines):
+        """Filter method"""
+        ret = []
+        for line in lines:
+            ret.append(re.sub(r"\\\((.*)\\\)", r"$\1$", line))
+
+        return ret
+</file>
+
+<file path="mkdocs_combine/filters/metadata.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+# Copyright 2016 Kergonath <kergonath@me.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import re
+
+
+class MetadataFilter:
+    r"""Turn the \( \) Markdown math notation into LaTex $$ inlines"""
+
+    def run(self, lines):
+        """Filter method"""
+        ret = []
+        header = True
+        for line in lines:
+            if header:
+                if not re.match(r"^[a-zA-Z\ ]:", line):
+                    header = False
+                    ret.append(line)
+            else:
+                ret.append(line)
+
+        return ret
+</file>
+
+<file path="mkdocs_combine/filters/tables.py">
+#!/usr/bin/python
+#
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# mdtableconv.py - converts pipe tables to Pandoc's grid tables
+
+import re
+import textwrap
+
+import markdown.blockparser
+import markdown.extensions.tables as tbl
+
+
+class TableFilter(tbl.TableProcessor):
+    def __init__(self, width=100, encoding="utf-8"):
+        self.width = width
+        self.width_default = 20  # Default column width for rogue rows with more cells than the first row.
+
+    def blocks(self, lines):
+        """Groups lines into markdown blocks"""
+        state = markdown.blockparser.State()
+        blocks = []
+
+        # We use three states: start, ``` and '\n'
+        state.set("start")
+
+        # index of current block
+        currblock = 0
+
+        for line in lines:
+            line += "\n"
+            if state.isstate("start"):
+                if line[:3] == "```":
+                    state.set("```")
+                else:
+                    state.set("\n")
+                blocks.append("")
+                currblock = len(blocks) - 1
+            else:
+                marker = line[:3]  # Will capture either '\n' or '```'
+                if state.isstate(marker):
+                    state.reset()
+            blocks[currblock] += line
+
+        return blocks
+
+    def convert_table(self, block):
+        """ "Converts a table to grid table format"""
+        lines_orig = block.split("\n")
+        lines_orig.pop()  # Remove extra newline at end of block
+        widest_cell = []  # Will hold the width of the widest cell for each column
+        widest_word = []  # Will hold the width of the widest word for each column
+        widths = []  # Will hold the computed widths of grid table columns
+
+        rows = []  # Will hold table cells during processing
+        lines = []  # Will hold the finished table
+
+        has_border = False  # Will be set to True if this is a bordered table
+
+        width_unit = 0.0  # This number is used to divide up self.width according
+        # to the following formula:
+        #
+        # self.width = width_unit * maxwidth
+        #
+        # Where maxwidth is the sum over all elements of
+        # widest_cell.
+
+        # Only process tables, leave everything else untouched
+
+        if not self.test(None, block):
+            return lines_orig
+
+        if lines_orig[0].startswith("|"):
+            has_border = True
+
+        # Initialize width arrays
+
+        for i in range(0, len(self._split_row(lines_orig[0], has_border))):
+            widest_cell.append(0)
+            widest_word.append(0)
+            widths.append(0)
+
+        # Parse lines into array of cells and record width of widest cell/word
+
+        for line in lines_orig:
+            row = self._split_row(line, has_border)
+            # pad widest_cell to account for under length first row
+            for i in range(0, len(row) - len(widest_cell)):
+                widest_cell.append(0)
+                widest_word.append(0)
+                widths.append(0)
+            for i in range(0, len(row)):
+                # Record cell width
+                if len(row[i]) > widest_cell[i]:
+                    widest_cell[i] = len(row[i])
+                # Record longest word
+                words = row[i].split()
+                for word in words:
+                    # Keep URLs from throwing the word length count off too badly.
+                    match = re.match(r"\[(.*?)\]\(.*?\)", word)
+                    if match:
+                        word = match.group(1)
+
+                    if len(word) > widest_word[i]:
+                        widest_word[i] = len(word)
+            rows.append(row)
+
+        # Remove table header divider line from rows
+        rows.pop(1)
+
+        # Compute first approximation of column widths based on maximum cell width
+
+        for width in widest_cell:
+            width_unit += float(width)
+
+        width_unit = self.width / width_unit
+
+        for i in range(0, len(widest_cell)):
+            widths[i] = int(widest_cell[i] * width_unit)
+
+        # Add rounding errors to narrowest column
+        if sum(widths) < self.width:
+            widths[widths.index(min(widths))] += self.width - sum(widths)
+
+        # Attempt to correct first approximation of column widths based on
+        # words that fail to fit their cell's width (if this fails textwrap
+        # will break up long words but since it does not add hyphens this
+        # should be avoided)
+
+        for i in range(0, len(widths)):
+            if widths[i] < widest_word[i]:
+                offset = widest_word[i] - widths[i]
+                for j in range(0, len(widths)):
+                    if widths[j] - widest_word[j] >= offset:
+                        widths[j] -= offset
+                        widths[i] += offset
+                        offset = 0
+
+        lines.append(self.ruler_line(widths, linetype="-"))
+
+        # Only add header row if it contains more than just whitespace
+        if "".join(rows[0]).strip() != "":
+            lines.extend(self.wrap_row(widths, rows[0]))
+            lines.append(self.ruler_line(widths, linetype="="))
+
+        for row in rows[1:]:
+            # Skip empty rows
+            if "".join(row).strip() == "":
+                continue
+            lines.extend(self.wrap_row(widths, row))
+            lines.append(self.ruler_line(widths, linetype="-"))
+
+        # Append empty line after table
+        lines.append("")
+
+        return lines
+
+    def run(self, lines):
+        """Filter method: Passes all blocks through convert_table() and returns a list of lines."""
+        ret = []
+
+        for block in self.blocks(lines):
+            ret.extend(self.convert_table(block))
+
+        return ret
+
+    def ruler_line(self, widths, linetype="-"):
+        """Generates a ruler line for separating rows from each other"""
+        cells = []
+        for w in widths:
+            cells.append(linetype * (w + 2))
+        return "+" + "+".join(cells) + "+"
+
+    def wrap_row(self, widths, row, width_default=None):
+        """Wraps a single line table row into a fixed width, multi-line table."""
+        lines = []
+        longest = 0  # longest wrapped column in row
+
+        if not width_default:
+            width_default = self.width_default
+
+        # Wrap column contents
+        for i in range(0, len(row)):
+            w = width_default  # column width
+
+            # Only set column width dynamicaly for non-rogue rows
+            if i < len(widths):
+                w = widths[i]
+
+            tw = textwrap.TextWrapper(width=w, break_on_hyphens=False)
+            # Wrap and left-justify
+            row[i] = tw.wrap(textwrap.dedent(row[i]))
+            # Pad with spaces up to to fixed column width
+            for l in range(0, len(row[i])):
+                row[i][l] += (w - len(row[i][l])) * " "
+            if len(row[i]) > longest:
+                longest = len(row[i])
+
+        # Pad all columns to have the same number of lines
+        for i in range(0, len(row)):
+            w = width_default  # column width
+
+            # Only set column width dynamicaly for non-rogue rows
+            if i < len(widths):
+                w = widths[i]
+
+            if len(row[i]) < longest:
+                for j in range(len(row[i]), longest):
+                    row[i].append(w * " ")
+
+        for l in range(0, longest):
+            line = []
+            for c in range(len(row)):
+                line.append(row[c][l])
+            line = "| " + " | ".join(line) + " |"
+            lines.append(line)
+
+        return lines
+</file>
+
+<file path="mkdocs_combine/filters/toc.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import re
+
+
+class TocFilter:
+    """Strips out python-markdown [TOC] keyword"""
+
+    def run(self, lines):
+        """Filter method"""
+        ret = []
+        for line in lines:
+            ret.append(re.sub(r"^\s*\[TOC\]\s*", "", line))
+
+        return ret
+</file>
+
+<file path="mkdocs_combine/exceptions.py">
+class FatalError(Exception):
+    """Exception wrapper that contains an exit status in addition to a message"""
+
+    def __init__(self, message, status=1):
+        self.message = message
+        self.status = status
+</file>
+
+<file path="LICENSE">
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   Copyright 2015 Johannes Grassler <johannes@btw23.de>
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+</file>
+
+<file path="mkdocs_combine/filters/xref.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import re
+
+# TODO: Implement working cross-references (for now they are simply replaced by
+#       their link titles).
+
+
+class XrefFilter:
+    """Replaces mkdocs style cross-references by just their title"""
+
+    def run(self, lines):
+        """Filter method"""
+        ret = []
+        for line in lines:
+            while True:
+                match = re.search(r"[^!]\[([^\]]+?)\]\(([^http].*?)\)", line)
+                if match is not None:
+                    title = match.group(1)
+                    line = re.sub(
+                        r"[^!]\[[^\]]+?\]\([^http].*?\)", title, line, count=1
+                    )
+                else:
+                    break
+            ret.append(line)
+
+        return ret
+</file>
+
+<file path=".gitignore">
+# Mac OS X internals
+*.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Bower and NPM libraries
+bower_components
+node_modules
+
+# Build files
+build
+MANIFEST
+site
+
+# PyCharm CE files
+.idea/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# dotenv
+.env
+
+# virtualenv
+.venv/
+venv/
+ENV/
+
+# Spyder project settings
+.spyderproject
+
+# Rope project settings
+.ropeproject
+
+mkdocs_combine/cli/mkdocs2print.py
+</file>
+
+<file path="py-requirements.txt">
+Markdown>=3.0.1
+mkdocs>=1.0.4
+markdown-include>=0.5.1
+</file>
+
+<file path="mkdocs_combine/filters/headlevels.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+# Copyright 2017 Adam Twardoch <adam+github@twardoch.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import re
+
+# TODO: Implement handling for Setext style headers.
+
+
+class HeadlevelFilter:
+    """Filter for increasing Markdown header levels (only Atx style)"""
+
+    def __init__(self, pages):
+        max_offset = 0
+
+        # Determine maximum header level from nesting in mkdocs.yml
+        for page in pages:
+            if page["level"] > max_offset:
+                max_offset = page["level"]
+
+        self.offset = max_offset
+
+    def run(self, lines):
+        not_in_code_block = True
+        """Filter method"""
+        ret = []
+        for line in lines:
+            if "```" in line:
+                not_in_code_block = not not_in_code_block
+            if not_in_code_block is True:
+                line = re.sub(r"^#", "#" * self.offset, line)
+                line = re.sub(r"^#######+", "######", line)
+            ret.append(line)
+
+        return ret
+</file>
+
+<file path="mkdocs_combine/mkdocs_combiner.py">
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+# Copyright 2017 Adam Twardoch <adam+github@twardoch.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import codecs
+import os
+import sys
+
+import markdown
+import mkdocs.config
+import mkdocs.utils
+import mkdocs_combine.filters.admonitions
+import mkdocs_combine.filters.anchors
+import mkdocs_combine.filters.chapterhead
+import mkdocs_combine.filters.exclude
+import mkdocs_combine.filters.headlevels
+import mkdocs_combine.filters.images
+import mkdocs_combine.filters.include
+import mkdocs_combine.filters.math
+import mkdocs_combine.filters.metadata
+import mkdocs_combine.filters.tables
+import mkdocs_combine.filters.toc
+import mkdocs_combine.filters.xref
+from mkdocs_combine.exceptions import FatalError
+
+
+class MkDocsCombiner:
+    """Top level converter class. Instantiate separately for each mkdocs.yml."""
+
+    def __init__(self, **kwargs):
+        self.config_file = kwargs.get("config_file", "mkdocs.yml")
+        self.encoding = kwargs.get("encoding", "utf-8")
+        self.exclude = kwargs.get("exclude", None)
+        self.filter_tables = kwargs.get("filter_tables", True)
+        self.filter_xrefs = kwargs.get("filter_xrefs", True)
+        self.image_ext = kwargs.get("image_ext", None)
+        self.strip_anchors = kwargs.get("strip_anchors", True)
+        self.strip_metadata = kwargs.get("strip_metadata", True)
+        self.convert_math = kwargs.get("convert_math", True)
+        self.width = kwargs.get("width", 100)
+        self.add_chapter_heads = kwargs.get("add_chapter_heads", True)
+        self.add_page_break = kwargs.get("add_page_break", False)
+        self.increase_heads = kwargs.get("increase_heads", True)
+        self.convert_admonition_md = kwargs.get("convert_admonition_md", False)
+        self.verbose = kwargs.get("verbose", False)
+        self.combined_md_lines = []
+        self.html_bare = ""
+        self.html = ""
+
+        self.log("Arguments: " + str(kwargs))
+
+        try:
+            cfg = codecs.open(self.config_file, "r", self.encoding)
+        except OSError as e:
+            raise FatalError(
+                f"Couldn't open {self.config_file} for reading: {e.strerror}",
+                1,
+            )
+
+        self.config = mkdocs.config.load_config(config_file=self.config_file)
+
+        if "docs_dir" not in self.config:
+            self.config["docs_dir"] = "docs"
+
+        if "site_dir" not in self.config:
+            self.config["site_dir"] = "site"
+
+        # Set filters depending on markdown extensions from config
+        # Defaults first...
+        self.filter_include = False
+        self.filter_toc = False
+
+        # ...then override defaults based on config, if any:
+
+        if "markdown_extensions" in self.config:
+            for ext in self.config["markdown_extensions"]:
+                extname = ""
+                # extension entries may be dicts (for passing extension parameters)
+                if type(ext) is dict:
+                    extname = list(ext.keys())[0].split("(")[0]
+                if type(ext) is str or type(ext) is self.encoding:
+                    extname = ext
+
+                if extname == "markdown_include.include":
+                    self.filter_include = True
+                if extname == "toc":
+                    self.filter_toc = True
+
+        cfg.close()
+
+    def log(self, message):
+        """Print messages if verbose mode is activated"""
+        if self.verbose:
+            print("[mkdocscombine] " + message)
+
+    def flatten_pages(self, pages, level=1):
+        """Recursively flattens pages data structure into a one-dimensional data structure"""
+        flattened = []
+
+        if sys.version_info.major < 3:
+            str_type = (str, self.encoding, unicode)
+        else:
+            str_type = (str, self.encoding)
+
+        for page in pages:
+            if type(page) in str_type:
+                flattened.append(
+                    {
+                        "file": page,
+                        "title": "%s {: .page-title}"
+                        % mkdocs.utils.filename_to_title(page),
+                        "level": level,
+                    }
+                )
+            if type(page) is list:
+                flattened.append(
+                    {
+                        "file": page[0],
+                        "title": "%s {: .page-title}" % page[1],
+                        "level": level,
+                    }
+                )
+            if type(page) is dict:
+                if type(list(page.values())[0]) in (str, self.encoding):
+                    flattened.append(
+                        {
+                            "file": list(page.values())[0],
+                            "title": "%s {: .page-title}" % list(page.keys())[0],
+                            "level": level,
+                        }
+                    )
+                if type(list(page.values())[0]) is list:
+                    # Add the parent section
+                    flattened.append(
+                        {
+                            "file": None,
+                            "title": "%s {: .page-title}" % list(page.keys())[0],
+                            "level": level,
+                        }
+                    )
+                    # Add children sections
+                    flattened.extend(
+                        self.flatten_pages(list(page.values())[0], level + 1)
+                    )
+        return flattened
+
+    def combine(self):
+        """User-facing conversion method. Returns combined document as a list of lines."""
+        lines = []
+
+        if self.verbose:
+            self.log("Running mkdocs-combine in verbose mode")
+
+        self.log(f"Configuration: {self.config}")
+
+        pages = []
+        if "pages" in self.config and self.config["pages"] is not None:
+            pages = self.flatten_pages(self.config["pages"])
+            self.log("Pages: ")
+        else:
+            if "nav" in self.config and self.config["nav"] is not None:
+                pages = self.flatten_pages(self.config["nav"])
+                self.log('Pages (using "nav" property): ')
+
+        f_exclude = mkdocs_combine.filters.exclude.ExcludeFilter(exclude=self.exclude)
+
+        f_include = mkdocs_combine.filters.include.IncludeFilter(
+            base_path=self.config["docs_dir"], encoding=self.encoding
+        )
+
+        # First, do the processing that must be done on a per-file basis:
+        # Adjust header levels, insert chapter headings and adjust image paths.
+
+        f_headlevel = mkdocs_combine.filters.headlevels.HeadlevelFilter(pages)
+
+        for page in pages:
+            lines_tmp = []
+            if page["file"]:
+                fname = os.path.join(self.config["docs_dir"], page["file"])
+                try:
+                    with codecs.open(fname, "r", self.encoding) as p:
+                        for line in p.readlines():
+                            lines_tmp.append(line.rstrip())
+                except OSError as e:
+                    raise FatalError(
+                        f"Couldn't open {fname} for reading: {e.strerror}", 1
+                    )
+
+            f_chapterhead = mkdocs_combine.filters.chapterhead.ChapterheadFilter(
+                headlevel=page["level"], title=page["title"]
+            )
+
+            f_image = mkdocs_combine.filters.images.ImageFilter(
+                filename=page["file"],
+                image_path=self.config["site_dir"],
+                image_ext=self.image_ext,
+            )
+
+            if self.exclude:
+                lines_tmp = f_exclude.run(lines_tmp)
+
+            if self.filter_include:
+                lines_tmp = f_include.run(lines_tmp)
+
+            lines_tmp = mkdocs_combine.filters.metadata.MetadataFilter().run(lines_tmp)
+            if self.increase_heads:
+                lines_tmp = f_headlevel.run(lines_tmp)
+            if self.add_chapter_heads:
+                lines_tmp = f_chapterhead.run(lines_tmp)
+            lines_tmp = f_image.run(lines_tmp)
+            lines.extend(lines_tmp)
+            # Add an empty line between pages to prevent text from a previous
+            # file from butting up against headers in a subsequent file.
+            lines.append("")
+            if self.add_page_break:
+                lines.append("\\newpage")
+                lines.append("")
+
+        # Strip anchor tags
+        if self.strip_anchors:
+            self.log("Stripping anchor tags")
+            lines = mkdocs_combine.filters.anchors.AnchorFilter().run(lines)
+
+        # Convert math expressions
+        if self.convert_math:
+            self.log("Converting math expressions")
+            lines = mkdocs_combine.filters.math.MathFilter().run(lines)
+
+        # Fix cross references
+        if self.filter_xrefs:
+            self.log("Fixing cross references")
+            lines = mkdocs_combine.filters.xref.XrefFilter().run(lines)
+
+        # Convert admonitions already for Markdown output
+        if self.convert_admonition_md:
+            self.log("Converting admonitions to HTML in Markdown output")
+            lines = mkdocs_combine.filters.admonitions.AdmonitionFilter().run(lines)
+
+        if self.filter_toc:
+            self.log("Creating TOC")
+            lines = mkdocs_combine.filters.toc.TocFilter().run(lines)
+
+        if self.filter_tables:
+            self.log("Filtering tables")
+            lines = mkdocs_combine.filters.tables.TableFilter().run(lines)
+
+        self.combined_md_lines = lines
+        return self.combined_md_lines
+
+    def to_html(self):
+        md = "\n".join(self.combined_md_lines)
+        mkdocs_extensions = self.config.get("markdown_extensions", [])
+        extensions = ["markdown.extensions.attr_list"]
+        extension_configs = self.config.get("mdx_configs", [])
+        for ext in mkdocs_extensions:
+            if type(ext) is str or type(ext) is self.encoding:
+                extname = str(ext)
+                extensions.append(extname)
+            elif type(ext) is dict:
+                extname = str(ext.keys()[0])
+                extensions.append(extname)
+                extension_configs[extname] = ext[extname]
+        self.html_bare = markdown.markdown(
+            md,
+            extensions=extensions,
+            extension_configs=extension_configs,
+            output_format="html5",
+        )
+        self.html = """<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        </head>
+        <body>
+        {}
+        </body>
+        </html>
+        """.format(self.html_bare)
+        return self.html
+</file>
+
+<file path="mkdocs_combine/cli/mkdocscombine.py">
+#!/usr/bin/python
+#
+# Copyright 2015 Johannes Grassler <johannes@btw23.de>
+# Copyright 2017 Adam Twardoch <adam+github@twardoch.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# mkdocscombine - combines an MkDocs source site into a single Markdown document
+
+
+import argparse
+import codecs
+import sys
+
+import mkdocs_combine
+from mkdocs_combine.exceptions import FatalError
+from pkg_resources import get_distribution
+
+__version__ = get_distribution("mkdocs-combine").version
+
+
+def stdout_file(encoding):
+    # Python 2 and Python 3 have mutually incompatible approaches to writing
+    # encoded data to sys.stdout, so we'll have to pick the appropriate one.
+
+    if sys.version_info.major == 2:
+        return codecs.getwriter(encoding)(sys.stdout)
+    elif sys.version_info.major >= 3:
+        return open(sys.stdout.fileno(), mode="w", encoding=encoding, buffering=1)
+
+
+def parse_args():
+    args = argparse.ArgumentParser(
+        description="mkdocscombine.py "
+        + "- combines an MkDocs source site into a single Markdown document"
+    )
+
+    args.add_argument(
+        "-V", "--version", action="version", version=f"%(prog)s {__version__}"
+    )
+    args.add_argument(
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        help="print additional info during execution",
+    )
+
+    args_files = args.add_argument_group("files")
+    args_files.add_argument(
+        "-o",
+        "--outfile",
+        dest="outfile",
+        default=None,
+        help="write combined Markdown to path ('-' for stdout)",
+    )
+    args_files.add_argument(
+        "-f",
+        "--config-file",
+        dest="config_file",
+        default="mkdocs.yml",
+        help="MkDocs config file (default: mkdocs.yml)",
+    )
+    args_files.add_argument(
+        "-e",
+        "--encoding",
+        dest="encoding",
+        default="utf-8",
+        help="set encoding for input files (default: utf-8)",
+    )
+    args_files.add_argument(
+        "-x",
+        "--exclude",
+        dest="exclude",
+        default=None,
+        action="append",
+        help="exclude Markdown files from processing (default: none)",
+    )
+    args_files.add_argument(
+        "-H",
+        "--outhtml",
+        dest="outhtml",
+        default=None,
+        help="write simple HTML to path ('-' for stdout)",
+    )
+
+    args_struct = args.add_argument_group("structure")
+    args_strip_metadata = args_struct.add_mutually_exclusive_group(required=False)
+    args_strip_metadata.add_argument(
+        "-y",
+        "--meta",
+        dest="strip_metadata",
+        action="store_false",
+        help="keep YAML metadata (default)",
+    )
+    args_strip_metadata.add_argument(
+        "-Y",
+        "--no-meta",
+        dest="strip_metadata",
+        action="store_true",
+        help="strip YAML metadata",
+    )
+    args.set_defaults(strip_metadata=False)
+
+    args_add_chapter_heads = args_struct.add_mutually_exclusive_group(required=False)
+    args_add_chapter_heads.add_argument(
+        "-c",
+        "--titles",
+        dest="add_chapter_heads",
+        action="store_true",
+        help="add titles from mkdocs.yml to Markdown files (default)",
+    )
+    args_add_chapter_heads.add_argument(
+        "-C",
+        "--no-titles",
+        dest="add_chapter_heads",
+        action="store_false",
+        help="do not add titles to Markdown files",
+    )
+    args.set_defaults(add_chapter_heads=True)
+
+    args_increase_heads = args_struct.add_mutually_exclusive_group(required=False)
+    args_increase_heads.add_argument(
+        "-u",
+        "--up-levels",
+        dest="increase_heads",
+        action="store_true",
+        help="increase ATX header levels in Markdown files (default)",
+    )
+    args_increase_heads.add_argument(
+        "-k",
+        "--keep-levels",
+        dest="increase_heads",
+        action="store_false",
+        help="do not increase ATX header levels in Markdown files",
+    )
+    args.set_defaults(increase_heads=True)
+
+    args_add_page_break = args_struct.add_mutually_exclusive_group(required=False)
+    args_add_page_break.add_argument(
+        "-B",
+        "--no-page-break",
+        dest="add_page_break",
+        action="store_false",
+        help="do not add page break between pages (default)",
+    )
+    args_add_page_break.add_argument(
+        "-b",
+        "--page-break",
+        dest="add_page_break",
+        action="store_true",
+        help="add page break between pages",
+    )
+    args.set_defaults(add_page_break=False)
+
+    args_tables = args.add_argument_group("tables")
+    args_filter_tables = args_tables.add_mutually_exclusive_group(required=False)
+    args_filter_tables.add_argument(
+        "-t",
+        "--tables",
+        dest="filter_tables",
+        action="store_false",
+        help="keep original Markdown tables (default)",
+    )
+    args_filter_tables.add_argument(
+        "-g",
+        "--grid-tables",
+        dest="filter_tables",
+        action="store_true",
+        help="combine Markdown tables to Pandoc-style grid tables",
+    )
+    args.set_defaults(filter_tables=False)
+
+    args_tables.add_argument(
+        "-G",
+        "--grid-width",
+        dest="width",
+        default=100,
+        help="char width of converted grid tables (default: 100)",
+    )
+
+    args_links = args.add_argument_group("links")
+    args_filter_xrefs = args_links.add_mutually_exclusive_group(required=False)
+    args_filter_xrefs.add_argument(
+        "-r",
+        "--refs",
+        dest="filter_xrefs",
+        action="store_false",
+        help="keep MkDocs-style cross-references",
+    )
+    args_filter_xrefs.add_argument(
+        "-R",
+        "--no-refs",
+        dest="filter_xrefs",
+        action="store_true",
+        help="replace MkDocs-style cross-references by just their title (default)",
+    )
+    args.set_defaults(filter_xrefs=True)
+
+    args_strip_anchors = args_links.add_mutually_exclusive_group(required=False)
+    args_strip_anchors.add_argument(
+        "-a",
+        "--anchors",
+        dest="strip_anchors",
+        action="store_false",
+        help="keep HTML anchor tags",
+    )
+    args_strip_anchors.add_argument(
+        "-A",
+        "--no-anchors",
+        dest="strip_anchors",
+        action="store_true",
+        help="strip out HTML anchor tags (default)",
+    )
+    args.set_defaults(strip_anchors=True)
+
+    args_extras = args.add_argument_group("extras")
+    args_convert_math = args_extras.add_mutually_exclusive_group(required=False)
+    args_convert_math.add_argument(
+        "-m",
+        "--math",
+        dest="convert_math",
+        action="store_false",
+        help=r"keep \( \) Markdown math notation as is (default)",
+    )
+    args_convert_math.add_argument(
+        "-l",
+        "--latex",
+        dest="convert_math",
+        action="store_true",
+        help=r"combine the \( \) Markdown math into LaTeX $$ inlines",
+    )
+    args.set_defaults(convert_math=False)
+
+    args_extras.add_argument(
+        "-i",
+        "--image-ext",
+        dest="image_ext",
+        default=None,
+        help="replace image extensions by (default: no replacement)",
+    )
+    args_extras.add_argument(
+        "-d",
+        "--admonitions-md",
+        dest="convert_admonition_md",
+        action="store_true",
+        help="convert admonitions to HTML already in the Markdown",
+    )
+
+    return args.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    try:
+        mkdocs_combiner = mkdocs_combine.MkDocsCombiner(
+            config_file=args.config_file,
+            exclude=args.exclude,
+            image_ext=args.image_ext,
+            width=args.width,
+            encoding=args.encoding,
+            filter_tables=args.filter_tables,
+            filter_xrefs=args.filter_xrefs,
+            strip_anchors=args.strip_anchors,
+            strip_metadata=args.strip_metadata,
+            convert_math=args.convert_math,
+            add_chapter_heads=args.add_chapter_heads,
+            increase_heads=args.increase_heads,
+            add_page_break=args.add_page_break,
+            verbose=args.verbose,
+            convert_admonition_md=args.convert_admonition_md,
+        )
+    except FatalError as e:
+        print(e.message, file=sys.stderr)
+        return e.status
+
+    mkdocs_combiner.combine()
+
+    combined_md_file = None
+    if args.outfile == "-":
+        combined_md_file = stdout_file(args.encoding)
+    elif args.outfile:
+        try:
+            combined_md_file = codecs.open(args.outfile, "w", encoding=args.encoding)
+        except OSError as e:
+            print(
+                f"Couldn't open {args.outfile} for writing: {e.strerror}",
+                file=sys.stderr,
+            )
+    if combined_md_file:
+        combined_md_file.write("\n".join(mkdocs_combiner.combined_md_lines))
+        combined_md_file.close()
+
+    html_file = None
+    if args.outhtml == "-":
+        html_file = stdout_file(args.encoding)
+    elif args.outhtml:
+        try:
+            html_file = codecs.open(args.outhtml, "w", encoding=args.encoding)
+        except OSError as e:
+            print(
+                f"Couldn't open {args.htmlfile} for writing: {e.strerror}",
+                file=sys.stderr,
+            )
+    if html_file:
+        html_file.write(mkdocs_combiner.to_html())
+        html_file.close()
+</file>
+
+<file path="CHANGES">
+0.4.0.0 by Daniel Nüst
+ 
+ * Add verbose option and some logging
+ * Single version definition in setup.py
+ * Switch to mkdocs 1.0.4 or later, incl. support for new "nav" config property, which deprecates "pages", see https://github.com/mkdocs/mkdocs/pull/1504
+
+0.3.1.1 by Adam Twardoch:
+
+ * Compatibility fix for unicode filenames
+
+0.3.1.0 by Daniel Nüst:
+
+* Added admonition processing
+
+0.3.0.1 by Jeff Hastings:
+
+ * Add ability to insert page breaks between pages
+
+0.3.0.0 by Adam Twardoch:
+
+ * Renamed project to 'mkdocs-combine'
+ * Added more commandline options to mkdocscombine tool
+
+0.2.6.3:
+
+ * Added support for pages without titles specified in mkdocs.yml
+
+0.2.6:
+
+ * Fixed issues/11 (added support for underwide header rows in tables)
+ * Fixed issues/9  (added support for list-style pages data structure)
+
+0.2.5:
+
+  * Fixed issues/8 (missing empty lines between pages)
+  * Fixed issues/5 (path delimiter handling on Windows)
+  * Documented installation on Windows
+
+0.2.4:
+
+  * Fixed crash on missing `markdown_extensions` in mkdocs.yml
+
+0.2.3:
+
+  * Fixed writing to standard output (broke in 0.2.2).
+
+0.2.2:
+
+  * Merged Marcin Klick's Python3 compatibility fixes
+  * Documented packages required for generating PDF from Pandoc source
+
+0.2.1:
+
+  Initial public release.
+</file>
+
+<file path="README.md">
+# mkdocs-combine
+
+**2018-06-05: Note that MkDocs now supports plugins that provide a better architecture for this task. I'll probably replace this project with a fork of [shauser's plugin](https://github.com/shauser/mkdocs-pdf-export-plugin)** — Adam
+
+[**`mkdocs-combine`**](https://github.com/twardoch/mkdocs-combine/) is a Python module that combines a [MkDocs](http://www.mkdocs.org/)-style Markdown source site into a single Markdown document. This is useful for
+
+* Generating PDF or EPUB from your MkDocs documentation
+* Generating single-page HTML from your MkDocs documentation
+* Converting your MkDocs documentation to other formats, such as asciidoc
+
+The output Markdown document is compatible with [pandoc](http://www.pandoc.org/). 
+
+This package is written in Python 2.7 and relies on `mkdocs` and the Python `Markdown` implementation. Aside from several filters, the module contains a `MkDocsCombiner` class tying them together into a coherent whole, and the command-line tool `mkdocscombine`. 
+
+[`mkdocs-combine`](https://github.com/twardoch/mkdocs-combine/) is maintained by Adam Twardoch. It's a fork of [`mkdocs-pandoc`](https://github.com/jgrassler/mkdocs-pandoc) by Johannes Grassler. 
+
+# Installation
+
+_Note: The following instructions apply to both Unixoid systems and Windows._
+
+If you'd like to use the development version, use
+
+```
+pip install git+https://github.com/twardoch/mkdocs-combine.git
+```
+
+Note that if you are behind a proxy, you might need to add the `--proxy` option like this
+
+```
+pip --proxy=http[s]://user@mydomain:port install ...
+```
+
+If you'd like to install a local development version from the current path, use
+
+```
+pip install -e .
+```
+
+## Pandoc compatibility
+
+For generating PDF through `pandoc` you will need to install a few things `pip` won't handle, namely `pandoc` and the somewhat exotic LaTeX packages its default LaTeX template uses. On a Ubuntu 14.04 system this amounts to the following packages:
+
+```
+fonts-lmodern
+lmodern
+pandoc
+texlive-base
+texlive-latex-extra
+texlive-fonts-recommended
+texlive-latex-recommended
+texlive-xetex
+```
+On a Windows system you can get them through [Chocolatey](https://chocolatey.org/). Once you have Chocolatey up and running the following commands should leave you with everything you need to create PDF output from `pandoc`:
+
+```
+choco install python
+choco install pandocpdf
+```
+
+# Usage
+
+When executed in the directory where your documentation's `mkdoc.yml` and the `docs/` directory containing the actual documentation resides, `mkdocscombine` should print one long Markdown document suitable for `pandoc` on standard output. The tool also allows to output a long HTML file in addition to, or in place of the Markdown file. 
+
+```
+usage: mkdocscombine [-h] [-V] [-o OUTFILE] [-f CONFIG_FILE] [-e ENCODING]
+                     [-x EXCLUDE] [-H OUTHTML] [-y | -Y] [-c | -C] [-u | -k]
+                     [-t | -g] [-G WIDTH] [-r | -R] [-a | -A] [-m | -l]
+                     [-i IMAGE_EXT]
+
+mkdocscombine.py - combines an MkDocs source site into a single Markdown
+document
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -V, --version         show program's version number and exit
+  -v, --verbose         print additional info during execution
+
+files:
+  -o OUTFILE, --outfile OUTFILE
+                        write combined Markdown to path ('-' for stdout)
+  -f CONFIG_FILE, --config-file CONFIG_FILE
+                        MkDocs config file (default: mkdocs.yml)
+  -e ENCODING, --encoding ENCODING
+                        set encoding for input files (default: utf-8)
+  -x EXCLUDE, --exclude EXCLUDE
+                        exclude Markdown files from processing (default: none)
+  -H OUTHTML, --outhtml OUTHTML
+                        write simple HTML to path ('-' for stdout)
+
+structure:
+  -y, --meta            keep YAML metadata (default)
+  -Y, --no-meta         strip YAML metadata
+  -c, --titles          add titles from mkdocs.yml to Markdown files (default)
+  -C, --no-titles       do not add titles to Markdown files
+  -u, --up-levels       increase ATX header levels in Markdown files (default)
+  -k, --keep-levels     do not increase ATX header levels in Markdown files
+  -B, --no-page-break   do not add page break between pages (default)
+  -b, --page-break      add page break between pages
+
+tables:
+  -t, --tables          keep original Markdown tables (default)
+  -g, --grid-tables     combine Markdown tables to Pandoc-style grid tables
+  -G WIDTH, --grid-width WIDTH
+                        char width of converted grid tables (default: 100)
+
+links:
+  -r, --refs            keep MkDocs-style cross-references
+  -R, --no-refs         replace MkDocs-style cross-references by just their
+                        title (default)
+  -a, --anchors         keep HTML anchor tags
+  -A, --no-anchors      strip out HTML anchor tags (default)
+
+extras:
+  -m, --math            keep \( \) Markdown math notation as is (default)
+  -l, --latex           combine the \( \) Markdown math into LaTeX $$ inlines
+  -i IMAGE_EXT, --image-ext IMAGE_EXT
+                        replace image extensions by (default: no replacement)
+  -d, --admonitions-md  convert admonitions to HTML already in the Markdown
+```
+
+## Usage example
+
+```
+cd ~/mydocs
+mkdocscombine -o mydocs.pd
+pandoc --toc -f markdown+grid_tables+table_captions -o mydocs.pdf mydocs.pd   # Generate PDF
+pandoc --toc -f markdown+grid_tables -t epub -o mydocs.epub mydocs.pd         # Generate EPUB
+```
+
+# Bugs
+
+The following things are known to be broken:
+
+* Line wrapping in table cells will wrap links, which causes whitespace to be inserted in their target URLs, at least in PDF output. While this is a bit of a Pandoc problem, it can and should be fixed in this module.
+* [Internal Hyperlinks](http://www.mkdocs.org/user-guide/writing-your-docs/#internal-hyperlinks) between markdown documents will be reduced to their link titles, i.e. they will not be links in the resulting Pandoc document.
+
+# Copyright
+
+  * © 2015 Johannes Grassler <johannes@btw23.de>
+  * © 2017 Adam Twardoch <adam+github@twardoch.com>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+You will also find a copy of the License in the file `LICENSE` in the top level
+directory of this source code repository. In case the above URL is unreachable and/or differs from the copy in this file, the file takes precedence.
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+
+
+### Projects related to Markdown and MkDocs by Adam Twardoch: 
+
+* [https://twardoch.github.io/markdown-rundown/](https://twardoch.github.io/markdown-rundown/) — summary of Markdown formatting styles [git](https://github.com/twardoch/markdown-rundown)
+* [https://twardoch.github.io/markdown-steroids/](https://twardoch.github.io/markdown-steroids/) — Some extensions for Python Markdown [git](https://github.com/twardoch/markdown-steroids)
+* [https://twardoch.github.io/markdown-utils/](https://twardoch.github.io/markdown-utils/) — various utilities for working with Markdown-based documents [git](https://github.com/twardoch/markdown-utils)
+* [https://twardoch.github.io/mkdocs-combine/](https://twardoch.github.io/mkdocs-combine/) — convert an MkDocs Markdown source site to a single Markdown document [git](https://github.com/twardoch/mkdocs-combine)
+* [https://github.com/twardoch/noto-mkdocs-theme/tree/rework](https://github.com/twardoch/noto-mkdocs-theme/tree/rework) — great Material Design-inspired theme for MkDocs [git](https://github.com/twardoch/noto-mkdocs-theme)
+* [https://twardoch.github.io/clinker-mktheme/](https://twardoch.github.io/clinker-mktheme/) — great theme for MkDocs [git](https://github.com/twardoch/clinker-mktheme)
+</file>
+
+<file path="setup.py">
+#!/usr/bin/env/python
+
+
+from setuptools import find_packages, setup
+
+long_description = (
+    "mkdocs_combine is a library that combines a MkDocs-style Markdown site "
+    "(multiple files, with the document structure defined in the MkDocs "
+    "configuration file mkdocs.yml) into a single Markdown document. "
+    "The resulting document can be processed by pandoc or other Markdown tools."
+    "The command line frontend tool mkdocscombine is the primary user interface."
+    "Derived from https://github.com/jgrassler/mkdocs-pandoc/"
+)
+
+setup(
+    name="mkdocs-combine",
+    # Versions should comply with PEP440.
+    version="0.4.0.0",
+    description="Combines a MkDocs Markdown site into a single Markdown file",
+    long_description=long_description,
+    # The project's main homepage.
+    url="https://github.com/twardoch/mkdocs-combine/",
+    download_url="https://github.com/twardoch/mkdocs-combine/archive/master.zip",
+    # Author details
+    author="Johannes Grassler",
+    author_email="johannes@btw23.de",
+    maintainer="Adam Twardoch",
+    maintainer_email="adam+github@twardoch.com",
+    # Choose your license
+    license="Apache",
+    # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
+    classifiers=[
+        "Environment :: MacOS X",
+        "Environment :: Console",
+        "Operating System :: MacOS :: MacOS X",
+        # How mature is this project? Common values are
+        #   3 - Alpha
+        #   4 - Beta
+        #   5 - Production/Stable
+        "Development Status :: 3 - Alpha",
+        # Indicate who your project is intended for
+        "Intended Audience :: End Users/Desktop",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Information Technology",
+        "Intended Audience :: System Administrators",
+        "Topic :: Documentation",
+        "Topic :: Text Processing",
+        "Topic :: Text Processing :: Filters",
+        "Topic :: Text Processing :: Markup",
+        "Topic :: Text Processing :: Markup :: HTML",
+        "Topic :: Software Development :: Documentation",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Natural Language :: English",
+        # Pick your license as you wish (should match "license" above)
+        "License :: OSI Approved :: Apache Software License",
+        # Specify the Python versions you support here. In particular, ensure
+        # that you indicate whether you support Python 2, Python 3 or both.
+        "Programming Language :: Python :: 2.7",
+    ],
+    # What does your project relate to?
+    keywords="mkdocs markdown pandoc print inline combine flatten",
+    # You can just specify the packages manually here if your project is
+    # simple. Or you can use find_packages().
+    packages=find_packages(),
+    # List run-time dependencies here.  These will be installed by pip when
+    # your project is installed. For an analysis of "install_requires" vs pip's
+    # requirements files see:
+    # https://packaging.python.org/en/latest/requirements.html
+    install_requires=["mkdocs>=1.0.4", "Markdown>=3.0.1", "markdown-include>=0.5.1"],
+    entry_points={
+        "console_scripts": [
+            "mkdocscombine=mkdocs_combine.cli.mkdocscombine:main",
+        ],
+    },
+)
+</file>
+
+</files>
